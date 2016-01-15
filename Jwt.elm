@@ -3,7 +3,7 @@ module Jwt(JwtError(..), authenticate, decodeToken, getWithJwt) where
 {-| Helper functions for Jwt token authentication.
 
 A Jwt Token comprises 3 elements: a header and footer and the content. This package
-includes a function to send an authentication request, a function to read the Content-typeof a token;
+includes a function to send an authentication request, a function to read the content of a token;
 and a function to send GET requests with the token attached.
 
 # API functions
@@ -35,7 +35,7 @@ type JwtError
 
     decoderToken dec token
 
-In the event of success, decodeToken returns an Elm record structure using the JSON Decoder.
+In the event of success, `decodeToken` returns an Elm record structure using the JSON Decoder.
 
 -}
 decodeToken : Json.Decoder a -> String -> Result JwtError a
@@ -52,7 +52,7 @@ decodeToken dec s =
 
 -- TASKS
 
-{-| authenticate is a custom Http POST method that sends a stringified
+{-| `authenticate` is a custom Http POST method that sends a stringified
 Json object containing the login credentials. It then extracts the token from the
 json response from the server and returns it.
 
@@ -80,8 +80,8 @@ post' dec url body =
     }
         |> Http.fromJson dec
 
-{-| getWithJwt is a replacement for Http.get that also takes a Jwt token and
-inserts it in the headers of the GET.
+{-| getWithJwt is a replacement for `Http.get` that attaches a provided Jwt token
+to the headers of the GET request.
 
     getWithJwt model.token "http://localhost:5000/api/restos/test"
         |> Task.toResult
