@@ -101,8 +101,8 @@ view : Signal.Address Action -> Model -> Html
 view address model =
     div
         [ class "container" ]
-        [ h1 [ ] [ text "Hello" ]
-        , p [] [ text "user = testuser, password = testpassword" ]
+        [ h1 [ ] [ text "elm-jwt in action" ]
+        , p [] [ text "username = testuser, password = testpassword" ]
         , div
             [ class "row" ]
             [ Html.form
@@ -134,16 +134,16 @@ view address model =
                         , label
                             [ for "pword" ]
                             [ text "Password" ]
-                        ]
-                    , button
-                        [ type' "submit"
-                        , class "btn waves-effect waves-light"
-                        ]
-                        [ text "Submit"
-                        , i
+                        , button
+                            [ type' "submit"
+                            , class "btn waves-effect waves-light"
+                            ]
+                            [ text "Submit"
+                            , i
                             [ class "material-icons right"
                             ]
                             [ text "send" ]
+                            ]
                         ]
                     ]
                 ]

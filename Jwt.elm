@@ -1,6 +1,10 @@
-module Jwt(JwtError, authenticate, decodeToken, getWithJwt) where
+module Jwt(JwtError(..), authenticate, decodeToken, getWithJwt) where
 
-{-| Helper functions to use with Jwt token authentication.
+{-| Helper functions for Jwt token authentication.
+
+A Jwt Token comprises 3 elements: a header and footer and the content. This package
+includes a function to send an authentication request, a function to read the Content-typeof a token;
+and a function to send GET requests with the token attached.
 
 # API functions
 @docs authenticate, decodeToken, getWithJwt
@@ -16,13 +20,10 @@ import Json.Decode as Json exposing ((:=), Value)
 import Http exposing (empty)
 import String
 
-{-| The three errors that can emerge are: network errors, base 64 decoding errors,
-problems decoding the json data within the content of the token
-
-    type JwtError
-        = HttpError String
-        | TokenProcessingError String
-        | TokenDecodeError String
+{-| The three errors that can emerge are:
+ - network errors,
+ - issues with processing (e.g. base 64 decoding) the token, and
+ - problems decoding the json data within the content of the token
 
 -}
 type JwtError
@@ -30,16 +31,12 @@ type JwtError
     | TokenProcessingError String
     | TokenDecodeError String
 
-
 {-| decodeToken converts the token content to an Elm record structure.
 
-In the event of success, decodeToken returns an Elm record structure. Otherwise, it returns
-the error message that differentiates between base64 decoding problems with the raw string,
-and Json decoding the converted string.
+    decoderToken dec token
 
-A Jwt Token comprises 3 elements: a header and footer and the content.
-These are separated by '.' in the token, so we first need to isolate the middle part.
-This is is then base64 decoded, and then passed to the Json decoder to be convered into an Elm structure.
+In the event of success, decodeToken returns an Elm record structure using the JSON Decoder.
+
 -}
 decodeToken : Json.Decoder a -> String -> Result JwtError a
 decodeToken dec s =
@@ -55,8 +52,8 @@ decodeToken dec s =
 
 -- TASKS
 
-{-| authenticate is a custom Http POST method that sends a string representation
-of Json data containing the login credentials. It then extracts the token from the
+{-| authenticate is a custom Http POST method that sends a stringified
+Json object containing the login credentials. It then extracts the token from the
 json response from the server and returns it.
 
     authenticate
@@ -69,7 +66,7 @@ json response from the server and returns it.
 authenticate : Json.Decoder String -> String -> String -> Task never (Result JwtError String)
 authenticate packetDecoder url body =
     post' packetDecoder url (Http.string body)            -- Task Http.Error String
-        |> Task.mapError (\s -> HttpError (toString s))                -- Task JwtError String
+        |> Task.mapError (\s -> HttpError (toString s))   -- Task JwtError String
         |> Task.toResult                                  -- Task never (Result JwtError String)
 
 -- Same as Http.post but with useful headers (instead of default [])
