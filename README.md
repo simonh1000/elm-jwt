@@ -1,1 +1,1 @@
-Jwt token helper functions
+# Jwt token helper functions.

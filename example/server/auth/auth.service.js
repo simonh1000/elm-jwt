@@ -31,6 +31,7 @@ var ensureAuthorized = function (req, res, next) {
         return next();
     });
 };
+
 // var ensureAdmin = function (req, res, next) {
 //     ensureAuthorized(req, res, function () {
 //         if (req.user.role == 'admin')
@@ -41,6 +42,7 @@ var ensureAuthorized = function (req, res, next) {
 //         }
 //     });
 // };
+
 exports.ensureAuthorized = ensureAuthorized;
-// exports.ensureAdmin = ensureAdmin;
 exports.jwtSign = jwtSign;
+// exports.ensureAdmin = ensureAdmin;

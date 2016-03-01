@@ -40,15 +40,43 @@ In the event of success, `decodeToken` returns an Elm record structure using the
 -}
 decodeToken : Json.Decoder a -> String -> Result JwtError a
 decodeToken dec s =
-    case String.split "." s of
-        (_ :: b :: _ :: []) ->
-            case Base64.decode b of
-                Result.Ok s ->
-                    case Json.decodeString dec s of
+    let
+        f1 = (fixlength << unurl) s
+        f2 = Result.map (String.split ".") f1
+    in
+    case f2 of
+        Result.Err e -> Result.Err e
+        Result.Ok (_ :: encBody :: _ :: []) ->
+            case Base64.decode encBody of
+                Result.Ok body ->
+                    case Json.decodeString dec body of
                         Result.Ok x -> Result.Ok x
                         Result.Err e -> Result.Err (TokenDecodeError e)
                 Result.Err e -> Result.Err (TokenProcessingError e)
-        otherwise -> Result.Err (TokenProcessingError s)
+        _ -> Result.Err <| TokenProcessingError "Token has invalid shape"
+
+-- Private functions
+-- https://github.com/simonh1000/elm-jwt/issues/1
+unurl : String -> String
+unurl =
+    let fix c =
+        case c of
+            '-' -> '+'
+            '_' -> '/'
+            c   -> c
+    in String.map fix
+
+fixlength : String -> Result JwtError String
+fixlength s =
+        case String.length s % 4 of
+            0 ->
+                Result.Ok s
+            2 ->
+                Result.Ok <| String.concat [s, "=="]
+            3 ->
+                Result.Ok <| String.concat [s, "="]
+            _ ->
+                Result.Err <| TokenProcessingError "Wrong length"
 
 -- TASKS
 
@@ -73,12 +101,12 @@ authenticate packetDecoder url body =
 post' : Json.Decoder a -> String -> Http.Body -> Task Http.Error a
 post' dec url body =
     Http.send Http.defaultSettings
-    { verb = "POST"
-    , headers = [("Content-type", "application/json")]
-    , url = url
-    , body = body
-    }
-        |> Http.fromJson dec
+        { verb = "POST"
+        , headers = [("Content-type", "application/json")]
+        , url = url
+        , body = body
+        }
+    |> Http.fromJson dec
 
 {-| getWithJwt is a replacement for `Http.get` that attaches a provided Jwt token
 to the headers of the GET request.
@@ -96,4 +124,4 @@ getWithJwt token dec url =
         , url = url
         , body = empty
         }
-        |> Http.fromJson dec
+    |> Http.fromJson dec
