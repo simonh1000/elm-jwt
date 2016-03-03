@@ -10,6 +10,12 @@ var router = express.Router();
 
 local.setup()
 
+// router.post('/', (req, res) => {
+// 	console.log(req.body);
+// 	console.log(req.params);
+// 	res.send("hello");
+// });
+
 router.post('/',
 	passport.authenticate('local'),
 	function(req, res) {

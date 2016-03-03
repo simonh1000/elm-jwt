@@ -6,6 +6,7 @@ import Html.Events exposing (..)
 
 import Http
 import Json.Decode as Json exposing ( (:=), Value )
+import Json.Encode as E
 
 import Effects exposing (Effects)
 import Task exposing (..)
@@ -76,11 +77,18 @@ update action model =
                 Pword -> { model | pword = val }
             in (res, Effects.none)
         Submit ->
+            let jsonString =
+                E.object
+                    [ ("username", E.string model.uname)
+                    , ("password", E.string model.pword)
+                    ]
+                |> E.encode 0
+            in
             ( model
             , authenticate
                 ("token" := Json.string)
                 "http://localhost:5000/auth"
-                ("{\"username\":\"" ++ model.uname ++ "\",\"password\":\""++ model.pword ++ "\"}")
+                jsonString
                     |> Task.map Data
                     |> Effects.task
             )
