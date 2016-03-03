@@ -41,12 +41,12 @@ In the event of success, `decodeToken` returns an Elm record structure using the
 decodeToken : Json.Decoder a -> String -> Result JwtError a
 decodeToken dec s =
     let
-        f1 = (fixlength << unurl) s
-        f2 = Result.map (String.split ".") f1
+        f1 = String.split "." <| unurl s
+        f2 = List.map fixlength f1
     in
     case f2 of
-        Result.Err e -> Result.Err e
-        Result.Ok (_ :: encBody :: _ :: []) ->
+        (_ :: Result.Err e :: _ :: []) -> Result.Err e
+        (_ :: Result.Ok encBody :: _ :: []) ->
             case Base64.decode encBody of
                 Result.Ok body ->
                     case Json.decodeString dec body of
