@@ -1,5 +1,5 @@
 {
-    "version": "1.0.1",
+    "version": "1.0.2",
     "summary": "Jwt token helper functions",
     "repository": "https://github.com/simonh1000/elm-jwt.git",
     "license": "BSD3",

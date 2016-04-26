@@ -97,7 +97,7 @@ authenticate packetDecoder url body =
         |> Task.mapError (\s -> HttpError (toString s))   -- Task JwtError String
         |> Task.toResult                                  -- Task never (Result JwtError String)
 
--- Same as Http.post but with useful headers (instead of default [])
+-- Same as Http.post but with json headers (instead of default [])
 post' : Json.Decoder a -> String -> Http.Body -> Task Http.Error a
 post' dec url body =
     Http.send Http.defaultSettings
