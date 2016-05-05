@@ -1,4 +1,4 @@
-module App (init, update, view) where
+module App exposing (init, update, view)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -8,8 +8,8 @@ import Http
 import Json.Decode as Json exposing ( (:=), Value )
 import Json.Encode as E
 
-import Effects exposing (Effects)
-import Task exposing (..)
+import Platform.Cmd exposing (Cmd)
+import Task exposing (toResult)
 
 import Jwt exposing (..)
 
@@ -17,6 +17,16 @@ import Jwt exposing (..)
 type Field
     = Uname
     | Pword
+
+type alias Model =
+    { uname : String
+    , pword : String
+    , token : Maybe String
+    , errorMsg : String
+    }
+
+init : (Model, Cmd Msg)
+init = (Model "testuser" "testpassword" Nothing "", Cmd.none)
 
 type alias JwtToken =
     { id: String
@@ -32,52 +42,29 @@ tokenDecoder =
         ("iat" := Json.int)
         ("exp" := Json.int)
 
-type alias Model =
-    { uname : String
-    , pword : String
-    , token : Maybe String
-    , errorMsg : String
-    }
-
-init : (Model, Effects Action)
-init = (Model "testuser" "testpassword" Nothing "", Effects.none)
-
 -- UPDATE
 
-type Action
-    = Data (Result JwtError String)
-    | Data2 (Result Http.Error String)
-    | Input Field String
+type Msg
+    -- User generated Msg
+    = FormInput Field String
     | Submit
     | TryToken
+    -- Cmd results
+    | LoginSuccess String
+    | LoginFail JwtError
+    | PostSucess String
+    | PostFail Http.Error
 
-update : Action -> Model -> (Model, Effects Action)
-update action model =
-    case action of
-        Data res ->
-            case res of
-                Result.Ok tok ->
-                    (   { model
-                        | token = Just tok
-                        , errorMsg = ""
-                        }
-                    , Effects.none )
-                Result.Err e ->
-                    ( { model | errorMsg = toString e }, Effects.none)
-        Data2 res ->
-            case res of
-                Result.Ok msg ->
-                    ( { model | errorMsg = msg }, Effects.none)
-                Result.Err e ->
-                    ( { model | errorMsg = toString e }, Effects.none)
-
-        Input inputId val ->
+update : Msg -> Model -> (Model, Cmd Msg)
+update msg model =
+    case msg of
+        FormInput inputId val ->
             let res = case inputId of
                 Uname -> { model | uname = val }
                 Pword -> { model | pword = val }
-            in (res, Effects.none)
+            in (res, Cmd.none)
         Submit ->
-            let jsonString =
+            let credentials =
                 E.object
                     [ ("username", E.string model.uname)
                     , ("password", E.string model.pword)
@@ -85,36 +72,51 @@ update action model =
                 |> E.encode 0
             in
             ( model
-            , authenticate
-                ("token" := Json.string)
-                "http://localhost:5000/auth"
-                jsonString
-                    |> Task.map Data
-                    |> Effects.task
+            , Task.perform
+                LoginFail LoginSuccess <|
+                authenticate
+                    ("token" := Json.string)
+                    "http://localhost:5000/auth"
+                    credentials
+                    -- |> Task.map Data
+                    -- |> Cmd.task
             )
         TryToken ->
             ( model
-            , getWithJwt
+            , Task.perform
+                PostFail PostSucess <|
+                getWithJwt
                     (Maybe.withDefault "" model.token)
                     ("data" := Json.string)
                     "http://localhost:5000/test"
-                |> Task.toResult
-                |> Task.map Data2
-                |> Effects.task
+                -- |> Task.toResult
+                -- |> Task.map Data2
+                -- |> Cmd.task
             )
+        LoginSuccess tok ->
+            ( { model | token = Just tok, errorMsg = "" }
+            , Cmd.none
+            )
+        LoginFail err ->
+            ( { model | errorMsg = toString err }, Cmd.none )
+        PostSucess msg ->
+            ( { model | errorMsg = msg }, Cmd.none )
+        PostFail err ->
+            ( { model | errorMsg = toString err }, Cmd.none )
 
 -- VIEW
 
-view : Signal.Address Action -> Model -> Html
-view address model =
+view : Model -> Html Msg
+view model =
     div
         [ class "container" ]
-        [ h1 [ ] [ text "elm-jwt in action" ]
+        [ h1 [ ] [ text "elm-jwt with node backend" ]
         , p [] [ text "username = testuser, password = testpassword" ]
         , div
             [ class "row" ]
             [ Html.form
-                [ onSubmit' address Submit
+                -- [ onSubmit' address Submit
+                [ onSubmit Submit
                 , class "col s12"
                 ]
                 [ div
@@ -122,7 +124,8 @@ view address model =
                     [ div
                         [ class "input-field col s12" ]
                         [ input
-                            [ on "input" (Json.map (Input Uname) targetValue) (Signal.message address)
+                            -- [ on "input" (Json.map (Input Uname) targetValue) (Signal.message address)
+                            [ onInput (FormInput Uname)
                             , id "uname"
                             , type' "text"
                             ]
@@ -134,7 +137,8 @@ view address model =
                     , div
                         [ class "input-field col s12" ]
                         [ input
-                            [ on "input" (Json.map (Input Pword) targetValue) (Signal.message address)
+                            [ onInput (FormInput Pword)
+                            -- [ on "input" (Json.map (Input Pword) targetValue) (Signal.message address)
                             , id "pword"
                             , type' "password"
                             ]
@@ -163,14 +167,16 @@ view address model =
         , p [] [ text model.errorMsg ]
         , button
             [ class "btn waves-effect waves-light"
-            , onClick address TryToken
+            , onClick TryToken
             ]
             [ text "try token" ]
         ]
 
-onSubmit' address action =
-    onWithOptions
-        "submit"
-        {stopPropagation = True, preventDefault = True}
-        (Json.succeed action)
-        (Signal.message address)
+-- onSubmit' address Msg =
+--     onWithOptions
+--         "submit"
+--         {stopPropagation = True, preventDefault = True}
+--         (Json.succeed Msg)
+--         (Signal.message address)
+
+-- CMDS

@@ -7,7 +7,8 @@
   "repository": "https://github.com/simonh1000/elm-fullstack-starter",
   "scripts": {
     "start": "gulp",
-    "production": "gulp build"
+    "production": "gulp build",
+    "postinstall": "elm-package install -y"
   },
   "engines": {
     "node": ">=4.x"
