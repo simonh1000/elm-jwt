@@ -5,13 +5,14 @@ html
         meta(name="viewport" content="width=device-width, initial-scale=1")
         meta(name="description", content="The beginnings of a great, typesafe application")
         title Elm fullstack starter
-        script(type="text/javascript" src="Main.js")
-        link(rel="stylesheet" href="css/styles.css")
-        link(href="http://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet")
         
+        link(rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous") 
+        link(rel="stylesheet" href="styles.css")
+        
+        script(type="text/javascript" src="Main.js")
     body
         script.
-            var d = Elm.fullscreen(Elm.Main);
+            var d = Elm.Main.fullscreen();
 
         script.
             // Don't send GA message during deployment
@@ -26,5 +27,4 @@ html
                 ga('send', 'pageview');
             }
 
-        script(type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js")
-        script(type="text/javascript" src="js/materialize.min.js")
+        //- script(type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js")
