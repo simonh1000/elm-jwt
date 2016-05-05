@@ -15,22 +15,17 @@ defmodule JwtExample.Router do
     # plug :fetch_flash
     # plug :protect_from_forgery
     # plug :put_secure_browser_headers
-    plug JwtExample.Auth, repo: JwtExample.Repo
-    plug Guardian.Plug.VerifyHeader
-    plug Guardian.Plug.LoadResource
+    # plug JwtExample.Auth, repo: JwtExample.Repo
   end
 
-  scope "/", JwtExample do
-    pipe_through :browser # Use the default browser stack
-
-    get "/elm", RootController, :index
-    get "/", PageController, :index
+  pipeline :api_auth do
+      plug Guardian.Plug.VerifyHeader, realm: "Bearer"
+      plug Guardian.Plug.LoadResource
   end
-
 
   # Other scopes may use custom stacks.
   scope "/api", JwtExample do
-    pipe_through :api
+    pipe_through [ :api, :api_auth ]
 
     get "/data", SimonController, :index
 
@@ -41,6 +36,13 @@ defmodule JwtExample.Router do
       pipe_through :api
 
       post "/", SessionController, :create, only: [:new, :create, :delete]
+  end
+
+  scope "/", JwtExample do
+    pipe_through :browser # Use the default browser stack
+
+    get "/*path", RootController, :index
+    # get "/", PageController, :index
   end
 
 

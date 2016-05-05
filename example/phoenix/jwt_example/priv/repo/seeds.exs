@@ -11,6 +11,7 @@
 # and so on) as they will fail if something goes wrong.
 alias JwtExample.Repo
 alias JwtExample.User
+import Comeonin.Bcrypt
 
 [
   %User{
@@ -19,6 +20,6 @@ alias JwtExample.User
   },
   %User{
     email: "testuser",
-    password_hash: "testpassword"
+    password_hash: hashpwsalt("testpassword")
   }
 ] |> Enum.each(&Repo.insert!(&1))

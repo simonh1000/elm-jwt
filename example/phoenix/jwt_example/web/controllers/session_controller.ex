@@ -16,12 +16,13 @@ defmodule JwtExample.SessionController do
             #   render conn, "data.json"
               new_conn = Guardian.Plug.api_sign_in(conn, conn.assigns[:current_user])
               jwt = Guardian.Plug.current_token(new_conn)
-              claims = Guardian.Plug.claims(new_conn)
-            #   exp = Map.get(claims, "exp")
+              {:ok, claims} = Guardian.Plug.claims(new_conn)
+              exp = Map.get(claims, "exp")
+              IO.inspect(exp)
 
               new_conn
               |> put_resp_header("authorization", "Bearer #{jwt}")
-            #   |> put_resp_header("x-expires", exp)
+              |> put_resp_header("x-expires", "#{exp}")
             #   |> render("login.json", jwt: jwt, exp: exp)
               |> render("login.json", jwt: jwt)
           {:error, _reason, conn} ->
