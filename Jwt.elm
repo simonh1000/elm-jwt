@@ -1,4 +1,4 @@
-module Jwt(JwtError(..), authenticate, decodeToken, getWithJwt) where
+module Jwt exposing (JwtError(..), authenticate, decodeToken, getWithJwt)
 
 {-| Helper functions for Jwt token authentication.
 
@@ -91,11 +91,12 @@ json response from the server and returns it.
             |> Task.map Token
             |> Effects.task
 -}
-authenticate : Json.Decoder String -> String -> String -> Task never (Result JwtError String)
+authenticate : Json.Decoder String -> String -> String -> Task JwtError String
 authenticate packetDecoder url body =
-    post' packetDecoder url (Http.string body)            -- Task Http.Error String
-        |> Task.mapError (\s -> HttpError (toString s))   -- Task JwtError String
-        |> Task.toResult                                  -- Task never (Result JwtError String)
+    post'
+        packetDecoder url (Http.string body)            -- Task Http.Error String
+    |> Task.mapError (\s -> HttpError (toString s))   -- Task JwtError String
+    -- |> Task.toResult                                  -- Task never (Result JwtError String)
 
 -- Same as Http.post but with json headers (instead of default [])
 post' : Json.Decoder a -> String -> Http.Body -> Task Http.Error a
