@@ -1,4 +1,4 @@
-defmodule JwtExample.SimonView do
+defmodule JwtExample.DataView do
   use JwtExample.Web, :view
 
   def render("data.json", %{user: user}) do
