@@ -93,10 +93,10 @@ json response from the server and returns it.
 -}
 authenticate : Json.Decoder String -> String -> String -> Task JwtError String
 authenticate packetDecoder url body =
-    post'
-        packetDecoder url (Http.string body)            -- Task Http.Error String
-    |> Task.mapError (\s -> HttpError (toString s))   -- Task JwtError String
-    -- |> Task.toResult                                  -- Task never (Result JwtError String)
+    body
+    |> Http.string
+    |> post' packetDecoder url
+    |> Task.mapError (HttpError << toString)
 
 -- Same as Http.post but with json headers (instead of default [])
 post' : Json.Decoder a -> String -> Http.Body -> Task Http.Error a
