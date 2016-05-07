@@ -26,7 +26,7 @@ nodeDecoder =
 
 phoenixDecoder =
     Json.object4 JwtToken
-        ("jti" := Json.string)
+        ("aud" := Json.string)
         ("aud" := Json.string)
         ("iat" := Json.int)
         ("exp" := Json.int)

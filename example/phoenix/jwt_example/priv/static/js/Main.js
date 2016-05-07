@@ -8365,7 +8365,7 @@ var _user$project$Decoders$nodeDecoder = A5(
 var _user$project$Decoders$phoenixDecoder = A5(
 	_elm_lang$core$Json_Decode$object4,
 	_user$project$Decoders$JwtToken,
-	A2(_elm_lang$core$Json_Decode_ops[':='], 'jti', _elm_lang$core$Json_Decode$string),
+	A2(_elm_lang$core$Json_Decode_ops[':='], 'aud', _elm_lang$core$Json_Decode$string),
 	A2(_elm_lang$core$Json_Decode_ops[':='], 'aud', _elm_lang$core$Json_Decode$string),
 	A2(_elm_lang$core$Json_Decode_ops[':='], 'iat', _elm_lang$core$Json_Decode$int),
 	A2(_elm_lang$core$Json_Decode_ops[':='], 'exp', _elm_lang$core$Json_Decode$int));

@@ -4,7 +4,7 @@ defmodule JwtExample.GuardianSerializer do
   alias JwtExample.Repo
   alias JwtExample.User
 
-  # def for_token(user = %User{}), do: { :ok, "User:#{user.id}, #{user.email}" }
+  # def for_token(user = %User{}), do: { :ok, "User:#{user.id}, Email:#{user.email}" }
   def for_token(user = %User{}), do: { :ok, "User:#{user.id}" }
   def for_token(_), do: { :error, "Unknown resource type" }
 

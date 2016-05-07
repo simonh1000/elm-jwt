@@ -23,11 +23,11 @@ defmodule JwtExample.Router do
       plug Guardian.Plug.LoadResource
   end
 
-  # Other scopes may use custom stacks.
   scope "/api", JwtExample do
+    # The api stack requires Authentication.
     pipe_through [ :api, :api_auth ]
 
-    get "/data", SimonController, :index
+    get "/data", DataController, :index
 
     resources "/users", UserController, except: [:new, :edit]
   end
