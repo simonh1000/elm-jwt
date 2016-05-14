@@ -2828,13 +2828,21 @@ var _elm_lang$core$Native_Platform = function() {
 
 function addPublicModule(object, name, main)
 {
-	var embed = main ? makeEmbed(name, main) : mainIsUndefined(name);
+	var init = main ? makeEmbed(name, main) : mainIsUndefined(name);
 
-	object['embed'] = embed;
+	object['worker'] = function worker(flags)
+	{
+		return init(undefined, flags, false);
+	}
+
+	object['embed'] = function embed(domNode, flags)
+	{
+		return init(domNode, flags, true);
+	}
 
 	object['fullscreen'] = function fullscreen(flags)
 	{
-		return embed(document.body, flags);
+		return init(document.body, flags, true);
 	};
 }
 
@@ -2865,11 +2873,15 @@ function errorHtml(message)
 
 function makeEmbed(moduleName, main)
 {
-	return function embed(rootDomNode, flags)
+	return function embed(rootDomNode, flags, withRenderer)
 	{
 		try
 		{
 			var program = mainToProgram(moduleName, main);
+			if (!withRenderer)
+			{
+				program.renderer = dummyRenderer;
+			}
 			return makeEmbedHelp(moduleName, program, rootDomNode, flags);
 		}
 		catch (e)
@@ -2878,6 +2890,11 @@ function makeEmbed(moduleName, main)
 			throw e;
 		}
 	};
+}
+
+function dummyRenderer()
+{
+	return { update: function() {} };
 }
 
 
@@ -2940,7 +2957,7 @@ function initWithFlags(moduleName, realInit, flagDecoder)
 		if (result.ctor === 'Err')
 		{
 			throw new Error(
-				'You trying to initialize module `' + moduleName + '` with an unexpected argument.\n'
+				'You are trying to initialize module `' + moduleName + '` with an unexpected argument.\n'
 				+ 'When trying to convert it to a usable Elm value, I run into this problem:\n\n'
 				+ result._0
 			);
@@ -5744,7 +5761,7 @@ function runHelp(decoder, value)
 			var realResult = decoder.callback(result.value);
 			if (realResult.ctor === 'Err')
 			{
-				throw new Error('TODO');
+				return badPrimitive('something custom', value);
 			}
 			return ok(realResult._0);
 
@@ -6374,6 +6391,13 @@ function applyFacts(domNode, eventNode, facts)
 				applyAttrsNS(domNode, value);
 				break;
 
+			case 'value':
+				if (domNode[key] !== value)
+				{
+					domNode[key] = value;
+				}
+				break;
+
 			default:
 				domNode[key] = value;
 				break;
@@ -6564,7 +6588,10 @@ function diffHelp(a, b, patches, index)
 			b.node = b.thunk();
 			var subPatches = [];
 			diffHelp(a.node, b.node, subPatches, 0);
-			patches.push(makePatch('p-thunk', index, subPatches));
+			if (subPatches.length > 0)
+			{
+				patches.push(makePatch('p-thunk', index, subPatches));
+			}
 			return;
 
 		case 'tagger':
@@ -6690,16 +6717,6 @@ function diffFacts(a, b, category)
 {
 	var diff;
 
-	// add new stuff
-	for (var bKey in b)
-	{
-		if (!(bKey in a))
-		{
-			diff = diff || {};
-			diff[bKey] = b[bKey];
-		}
-	}
-
 	// look for changes and removals
 	for (var aKey in a)
 	{
@@ -6740,13 +6757,24 @@ function diffFacts(a, b, category)
 		var bValue = b[aKey];
 
 		// reference equal, so don't worry about it
-		if (aValue === bValue || (category === EVENT_KEY && equalEvents(aValue, bValue)))
+		if (aValue === bValue && aKey !== 'value'
+			|| category === EVENT_KEY && equalEvents(aValue, bValue))
 		{
 			continue;
 		}
 
 		diff = diff || {};
 		diff[aKey] = bValue;
+	}
+
+	// add new stuff
+	for (var bKey in b)
+	{
+		if (!(bKey in a))
+		{
+			diff = diff || {};
+			diff[bKey] = b[bKey];
+		}
 	}
 
 	return diff;
@@ -7261,6 +7289,9 @@ var _elm_lang$html$Html_Attributes$type$ = function (value) {
 };
 var _elm_lang$html$Html_Attributes$value = function (value) {
 	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'value', value);
+};
+var _elm_lang$html$Html_Attributes$defaultValue = function (value) {
+	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'defaultValue', value);
 };
 var _elm_lang$html$Html_Attributes$placeholder = function (value) {
 	return A2(_elm_lang$html$Html_Attributes$stringProperty, 'placeholder', value);
@@ -7968,7 +7999,7 @@ var _evancz$elm_http$Http$post = F3(
 			A2(_evancz$elm_http$Http$send, _evancz$elm_http$Http$defaultSettings, request));
 	});
 
-var _user$project$BitList$partition = F2(
+var _truqu$elm_base64$BitList$partition = F2(
 	function (size, list) {
 		return (_elm_lang$core$Native_Utils.cmp(
 			_elm_lang$core$List$length(list),
@@ -7977,56 +8008,56 @@ var _user$project$BitList$partition = F2(
 			_elm_lang$core$List_ops['::'],
 			A2(_elm_lang$core$List$take, size, list),
 			A2(
-				_user$project$BitList$partition,
+				_truqu$elm_base64$BitList$partition,
 				size,
 				A2(_elm_lang$core$List$drop, size, list)));
 	});
-var _user$project$BitList$toByteReverse = function (bitList) {
+var _truqu$elm_base64$BitList$toByteReverse = function (bitList) {
 	var _p0 = bitList;
 	if (_p0.ctor === '[]') {
 		return 0;
 	} else {
 		if (_p0._0.ctor === 'Off') {
-			return 2 * _user$project$BitList$toByteReverse(_p0._1);
+			return 2 * _truqu$elm_base64$BitList$toByteReverse(_p0._1);
 		} else {
-			return 1 + (2 * _user$project$BitList$toByteReverse(_p0._1));
+			return 1 + (2 * _truqu$elm_base64$BitList$toByteReverse(_p0._1));
 		}
 	}
 };
-var _user$project$BitList$toByte = function (bitList) {
-	return _user$project$BitList$toByteReverse(
+var _truqu$elm_base64$BitList$toByte = function (bitList) {
+	return _truqu$elm_base64$BitList$toByteReverse(
 		_elm_lang$core$List$reverse(bitList));
 };
-var _user$project$BitList$Off = {ctor: 'Off'};
-var _user$project$BitList$On = {ctor: 'On'};
-var _user$project$BitList$fromNumber = function ($int) {
+var _truqu$elm_base64$BitList$Off = {ctor: 'Off'};
+var _truqu$elm_base64$BitList$On = {ctor: 'On'};
+var _truqu$elm_base64$BitList$fromNumber = function ($int) {
 	return _elm_lang$core$Native_Utils.eq($int, 0) ? _elm_lang$core$Native_List.fromArray(
 		[]) : (_elm_lang$core$Native_Utils.eq(
 		A2(_elm_lang$core$Basics_ops['%'], $int, 2),
 		1) ? A2(
 		_elm_lang$core$List$append,
-		_user$project$BitList$fromNumber(($int / 2) | 0),
+		_truqu$elm_base64$BitList$fromNumber(($int / 2) | 0),
 		_elm_lang$core$Native_List.fromArray(
-			[_user$project$BitList$On])) : A2(
+			[_truqu$elm_base64$BitList$On])) : A2(
 		_elm_lang$core$List$append,
-		_user$project$BitList$fromNumber(($int / 2) | 0),
+		_truqu$elm_base64$BitList$fromNumber(($int / 2) | 0),
 		_elm_lang$core$Native_List.fromArray(
-			[_user$project$BitList$Off])));
+			[_truqu$elm_base64$BitList$Off])));
 };
-var _user$project$BitList$fromNumberWithSize = F2(
+var _truqu$elm_base64$BitList$fromNumberWithSize = F2(
 	function (number, size) {
-		var bitList = _user$project$BitList$fromNumber(number);
+		var bitList = _truqu$elm_base64$BitList$fromNumber(number);
 		var paddingSize = size - _elm_lang$core$List$length(bitList);
 		return A2(
 			_elm_lang$core$List$append,
-			A2(_elm_lang$core$List$repeat, paddingSize, _user$project$BitList$Off),
+			A2(_elm_lang$core$List$repeat, paddingSize, _truqu$elm_base64$BitList$Off),
 			bitList);
 	});
-var _user$project$BitList$fromByte = function ($byte) {
-	return A2(_user$project$BitList$fromNumberWithSize, $byte, 8);
+var _truqu$elm_base64$BitList$fromByte = function ($byte) {
+	return A2(_truqu$elm_base64$BitList$fromNumberWithSize, $byte, 8);
 };
 
-var _user$project$Base64$dropLast = F2(
+var _truqu$elm_base64$Base64$dropLast = F2(
 	function (number, list) {
 		return _elm_lang$core$List$reverse(
 			A2(
@@ -8034,20 +8065,20 @@ var _user$project$Base64$dropLast = F2(
 				number,
 				_elm_lang$core$List$reverse(list)));
 	});
-var _user$project$Base64$partitionBits = function (list) {
+var _truqu$elm_base64$Base64$partitionBits = function (list) {
 	var list$ = A3(
 		_elm_lang$core$List$foldr,
 		_elm_lang$core$List$append,
 		_elm_lang$core$Native_List.fromArray(
 			[]),
-		A2(_elm_lang$core$List$map, _user$project$BitList$fromByte, list));
+		A2(_elm_lang$core$List$map, _truqu$elm_base64$BitList$fromByte, list));
 	return A2(
 		_elm_lang$core$List$map,
-		_user$project$BitList$toByte,
-		A2(_user$project$BitList$partition, 6, list$));
+		_truqu$elm_base64$BitList$toByte,
+		A2(_truqu$elm_base64$BitList$partition, 6, list$));
 };
-var _user$project$Base64$base64CharsList = _elm_lang$core$String$toList('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/');
-var _user$project$Base64$base64Map = function () {
+var _truqu$elm_base64$Base64$base64CharsList = _elm_lang$core$String$toList('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/');
+var _truqu$elm_base64$Base64$base64Map = function () {
 	var insert = F2(
 		function (_p0, dict) {
 			var _p1 = _p0;
@@ -8063,21 +8094,21 @@ var _user$project$Base64$base64Map = function () {
 				function (v0, v1) {
 					return {ctor: '_Tuple2', _0: v0, _1: v1};
 				}),
-			_user$project$Base64$base64CharsList));
+			_truqu$elm_base64$Base64$base64CharsList));
 }();
-var _user$project$Base64$isValid = function (string) {
+var _truqu$elm_base64$Base64$isValid = function (string) {
 	var string$ = A2(_elm_lang$core$String$endsWith, '==', string) ? A2(_elm_lang$core$String$dropRight, 2, string) : (A2(_elm_lang$core$String$endsWith, '=', string) ? A2(_elm_lang$core$String$dropRight, 1, string) : string);
 	var isBase64Char = function ($char) {
-		return A2(_elm_lang$core$Dict$member, $char, _user$project$Base64$base64Map);
+		return A2(_elm_lang$core$Dict$member, $char, _truqu$elm_base64$Base64$base64Map);
 	};
 	return A2(_elm_lang$core$String$all, isBase64Char, string$);
 };
-var _user$project$Base64$toBase64BitList = function (string) {
+var _truqu$elm_base64$Base64$toBase64BitList = function (string) {
 	var endingEquals = A2(_elm_lang$core$String$endsWith, '==', string) ? 2 : (A2(_elm_lang$core$String$endsWith, '=', string) ? 1 : 0);
 	var stripped = _elm_lang$core$String$toList(
 		A2(_elm_lang$core$String$dropRight, endingEquals, string));
 	var base64ToInt = function ($char) {
-		var _p2 = A2(_elm_lang$core$Dict$get, $char, _user$project$Base64$base64Map);
+		var _p2 = A2(_elm_lang$core$Dict$get, $char, _truqu$elm_base64$Base64$base64Map);
 		if (_p2.ctor === 'Just') {
 			return _p2._0;
 		} else {
@@ -8086,15 +8117,15 @@ var _user$project$Base64$toBase64BitList = function (string) {
 	};
 	var numberList = A2(_elm_lang$core$List$map, base64ToInt, stripped);
 	return A2(
-		_user$project$Base64$dropLast,
+		_truqu$elm_base64$Base64$dropLast,
 		endingEquals * 2,
 		A2(
 			_elm_lang$core$List$concatMap,
-			A2(_elm_lang$core$Basics$flip, _user$project$BitList$fromNumberWithSize, 6),
+			A2(_elm_lang$core$Basics$flip, _truqu$elm_base64$BitList$fromNumberWithSize, 6),
 			numberList));
 };
-var _user$project$Base64$toCharList = function (bitList) {
-	var array = _elm_lang$core$Array$fromList(_user$project$Base64$base64CharsList);
+var _truqu$elm_base64$Base64$toCharList = function (bitList) {
+	var array = _elm_lang$core$Array$fromList(_truqu$elm_base64$Base64$base64CharsList);
 	var toBase64Char = function (index) {
 		return A2(
 			_elm_lang$core$Maybe$withDefault,
@@ -8109,12 +8140,12 @@ var _user$project$Base64$toCharList = function (bitList) {
 				return A2(
 					_elm_lang$core$List$append,
 					A2(
-						_user$project$Base64$dropLast,
+						_truqu$elm_base64$Base64$dropLast,
 						2,
 						A2(
 							_elm_lang$core$List$map,
 							toBase64Char,
-							_user$project$Base64$partitionBits(
+							_truqu$elm_base64$Base64$partitionBits(
 								_elm_lang$core$Native_List.fromArray(
 									[_p5._0, 0, 0])))),
 					_elm_lang$core$Native_List.fromArray(
@@ -8126,12 +8157,12 @@ var _user$project$Base64$toCharList = function (bitList) {
 				return A2(
 					_elm_lang$core$List$append,
 					A2(
-						_user$project$Base64$dropLast,
+						_truqu$elm_base64$Base64$dropLast,
 						1,
 						A2(
 							_elm_lang$core$List$map,
 							toBase64Char,
-							_user$project$Base64$partitionBits(
+							_truqu$elm_base64$Base64$partitionBits(
 								_elm_lang$core$Native_List.fromArray(
 									[_p5._0, _p5._1, 0])))),
 					_elm_lang$core$Native_List.fromArray(
@@ -8143,14 +8174,14 @@ var _user$project$Base64$toCharList = function (bitList) {
 			return A2(
 				_elm_lang$core$List$map,
 				toBase64Char,
-				_user$project$Base64$partitionBits(
+				_truqu$elm_base64$Base64$partitionBits(
 					_elm_lang$core$Native_List.fromArray(
 						[_p5._0, _p5._1, _p5._2])));
 		}
 	};
 	return A2(_elm_lang$core$List$concatMap, toChars, bitList);
 };
-var _user$project$Base64$toTupleList = function (list) {
+var _truqu$elm_base64$Base64$toTupleList = function (list) {
 	var _p6 = list;
 	if (_p6.ctor === '::') {
 		if (_p6._1.ctor === '::') {
@@ -8158,7 +8189,7 @@ var _user$project$Base64$toTupleList = function (list) {
 				return A2(
 					_elm_lang$core$List_ops['::'],
 					{ctor: '_Tuple3', _0: _p6._0, _1: _p6._1._0, _2: _p6._1._1._0},
-					_user$project$Base64$toTupleList(_p6._1._1._1));
+					_truqu$elm_base64$Base64$toTupleList(_p6._1._1._1));
 			} else {
 				return _elm_lang$core$Native_List.fromArray(
 					[
@@ -8176,35 +8207,35 @@ var _user$project$Base64$toTupleList = function (list) {
 			[]);
 	}
 };
-var _user$project$Base64$toCodeList = function (string) {
+var _truqu$elm_base64$Base64$toCodeList = function (string) {
 	return A2(
 		_elm_lang$core$List$map,
 		_elm_lang$core$Char$toCode,
 		_elm_lang$core$String$toList(string));
 };
-var _user$project$Base64$decode = function (s) {
+var _truqu$elm_base64$Base64$decode = function (s) {
 	if (_elm_lang$core$Basics$not(
-		_user$project$Base64$isValid(s))) {
+		_truqu$elm_base64$Base64$isValid(s))) {
 		return _elm_lang$core$Result$Err('Error while decoding');
 	} else {
 		var bitList = A2(
 			_elm_lang$core$List$map,
-			_user$project$BitList$toByte,
+			_truqu$elm_base64$BitList$toByte,
 			A2(
-				_user$project$BitList$partition,
+				_truqu$elm_base64$BitList$partition,
 				8,
-				_user$project$Base64$toBase64BitList(s)));
+				_truqu$elm_base64$Base64$toBase64BitList(s)));
 		var charList = A2(_elm_lang$core$List$map, _elm_lang$core$Char$fromCode, bitList);
 		return _elm_lang$core$Result$Ok(
 			_elm_lang$core$String$fromList(charList));
 	}
 };
-var _user$project$Base64$encode = function (s) {
+var _truqu$elm_base64$Base64$encode = function (s) {
 	return _elm_lang$core$Result$Ok(
 		_elm_lang$core$String$fromList(
-			_user$project$Base64$toCharList(
-				_user$project$Base64$toTupleList(
-					_user$project$Base64$toCodeList(s)))));
+			_truqu$elm_base64$Base64$toCharList(
+				_truqu$elm_base64$Base64$toTupleList(
+					_truqu$elm_base64$Base64$toCodeList(s)))));
 };
 
 var _user$project$Jwt$getWithJwt = F3(
@@ -8309,7 +8340,7 @@ var _user$project$Jwt$decodeToken = F2(
 					}
 				} else {
 					if ((_p2._1._1.ctor === '::') && (_p2._1._1._1.ctor === '[]')) {
-						var _p3 = _user$project$Base64$decode(_p2._1._0._0);
+						var _p3 = _truqu$elm_base64$Base64$decode(_p2._1._0._0);
 						if (_p3.ctor === 'Ok') {
 							var _p4 = A2(_elm_lang$core$Json_Decode$decodeString, dec, _p3._0);
 							if (_p4.ctor === 'Ok') {
@@ -8338,17 +8369,18 @@ var _user$project$Jwt$HttpError = function (a) {
 };
 var _user$project$Jwt$authenticate = F3(
 	function (packetDecoder, url, body) {
-		return A2(
-			_elm_lang$core$Task$mapError,
-			function (_p5) {
-				return _user$project$Jwt$HttpError(
-					_elm_lang$core$Basics$toString(_p5));
-			},
-			A3(
-				_user$project$Jwt$post$,
-				packetDecoder,
-				url,
-				_evancz$elm_http$Http$string(body)));
+		return _elm_lang$core$Task$toResult(
+			A2(
+				_elm_lang$core$Task$mapError,
+				function (_p5) {
+					return _user$project$Jwt$HttpError(
+						_elm_lang$core$Basics$toString(_p5));
+				},
+				A3(
+					_user$project$Jwt$post$,
+					packetDecoder,
+					url,
+					_evancz$elm_http$Http$string(body))));
 	});
 
 var _user$project$Decoders$JwtToken = F4(
@@ -8470,16 +8502,29 @@ var _user$project$App$update = F2(
 					}()
 				};
 			case 'LoginSuccess':
-				return {
-					ctor: '_Tuple2',
-					_0: _elm_lang$core$Native_Utils.update(
-						model,
-						{
-							token: _elm_lang$core$Maybe$Just(_p0._0),
-							msg: ''
-						}),
-					_1: _elm_lang$core$Platform_Cmd$none
-				};
+				var _p4 = _p0._0;
+				if (_p4.ctor === 'Ok') {
+					return {
+						ctor: '_Tuple2',
+						_0: _elm_lang$core$Native_Utils.update(
+							model,
+							{
+								token: _elm_lang$core$Maybe$Just(_p4._0),
+								msg: ''
+							}),
+						_1: _elm_lang$core$Platform_Cmd$none
+					};
+				} else {
+					return {
+						ctor: '_Tuple2',
+						_0: _elm_lang$core$Native_Utils.update(
+							model,
+							{
+								msg: _elm_lang$core$Basics$toString(_p4._0)
+							}),
+						_1: _elm_lang$core$Platform_Cmd$none
+					};
+				}
 			case 'LoginFail':
 				return {
 					ctor: '_Tuple2',
@@ -8643,11 +8688,11 @@ var _user$project$App$view = function (model) {
 							]))
 					])),
 				function () {
-				var _p4 = model.token;
-				if (_p4.ctor === 'Nothing') {
+				var _p5 = model.token;
+				if (_p5.ctor === 'Nothing') {
 					return _elm_lang$html$Html$text('');
 				} else {
-					var token = A2(_user$project$Jwt$decodeToken, _user$project$Decoders$tokenDecoder, _p4._0);
+					var token = A2(_user$project$Jwt$decodeToken, _user$project$Decoders$tokenDecoder, _p5._0);
 					return A2(
 						_elm_lang$html$Html$div,
 						_elm_lang$core$Native_List.fromArray(

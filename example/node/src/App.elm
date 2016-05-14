@@ -50,7 +50,7 @@ type Msg
     | Submit
     | TryToken
     -- Cmd results
-    | LoginSuccess String
+    | LoginSuccess (Result JwtError String)
     | LoginFail JwtError
     | PostSucess String
     | PostFail Http.Error
@@ -93,10 +93,14 @@ update msg model =
                 -- |> Task.map Data2
                 -- |> Cmd.task
             )
-        LoginSuccess tok ->
-            ( { model | token = Just tok, errorMsg = "" }
-            , Cmd.none
-            )
+        LoginSuccess possToken ->
+            case possToken of
+                Result.Ok tokenString ->
+                    ( { model | token = Just tokenString, msg = "" }
+                    , Cmd.none
+                    )
+                Result.Err err ->
+                    ( { model | msg = toString err }, Cmd.none )
         LoginFail err ->
             ( { model | errorMsg = toString err }, Cmd.none )
         PostSucess msg ->

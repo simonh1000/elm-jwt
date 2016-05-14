@@ -37,7 +37,7 @@ type Msg
     | Submit
     | TryToken
     -- Cmd results
-    | LoginSuccess String
+    | LoginSuccess (Result JwtError String)
     | LoginFail JwtError
     | PostSucess String
     | PostFail Http.Error
@@ -79,10 +79,14 @@ update msg model =
                             ("data" := Json.string)
                             "/api/data"
             )
-        LoginSuccess tokenString ->
-            ( { model | token = Just tokenString, msg = "" }
-            , Cmd.none
-            )
+        LoginSuccess possToken ->
+            case possToken of
+                Result.Ok tokenString ->
+                    ( { model | token = Just tokenString, msg = "" }
+                    , Cmd.none
+                    )
+                Result.Err err ->
+                    ( { model | msg = toString err }, Cmd.none )
         LoginFail err ->
             ( { model | msg = toString err }, Cmd.none )
         PostSucess msg ->
