@@ -9,6 +9,12 @@ type alias JwtToken =
     , expiry : Int
     }
 
+tokenStringDecoder =
+  ("token" := Json.string)
+
+dataDecoder =
+  ("data" := Json.string)
+  
 tokenDecoder =
     Json.oneOf
         [ nodeDecoder

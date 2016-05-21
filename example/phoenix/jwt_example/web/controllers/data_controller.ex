@@ -7,7 +7,6 @@ defmodule JwtExample.DataController do
   def index(conn, _params) do
       user = Guardian.Plug.current_resource(conn)
 
-    #   IO.inspect(user)
       render(conn, "data.json", user: user)
   end
 

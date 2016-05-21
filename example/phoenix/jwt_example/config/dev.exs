@@ -43,14 +43,7 @@ config :jwt_example, JwtExample.Repo,
 
 config :guardian, Guardian,
     allowed_algos: ["ES512"],
-    # secret_key: fn ->
-    #     {jwe, jwk} =
-    #         System.get_env("MWQxoJfCxk1yTf3BQc4qJKBz/vSeehg334KHXW3x7FNe9DGVekCKKCqpTJtsKBQ/")
-    #         |> JOSE.JWK.from_file(System.get_env(".jwk_file"))
-    #     jwk
-    #   end,
     secret_key: "lksjdlkjsdflkjsdf",
-    
     issuer: "JwtExample",
-    ttl: { 30, :days },
+    ttl: { 30, :seconds },
     serializer: JwtExample.GuardianSerializer

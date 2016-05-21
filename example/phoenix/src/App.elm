@@ -4,12 +4,11 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
-import Http
-import Json.Encode as E
-import Json.Decode as Json exposing ( (:=), Value )
+import Json.Encode as E exposing (Value)
 
+import Http
 import Platform.Cmd exposing (Cmd)
-import Task exposing (toResult)
+import Task
 
 import Jwt exposing (..)
 import Decoders exposing (..)
@@ -37,10 +36,10 @@ type Msg
     | Submit
     | TryToken
     -- Cmd results
-    | LoginSuccess (Result JwtError String)
+    | LoginSuccess String
     | LoginFail JwtError
     | PostSucess String
-    | PostFail Http.Error
+    | PostFail JwtError
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -60,11 +59,8 @@ update msg model =
             in
             ( model
             , Task.perform
-                LoginFail LoginSuccess <|
-                authenticate
-                    ("token" := Json.string)
-                    "/sessions"
-                    credentials
+                LoginFail LoginSuccess
+                (authenticate tokenStringDecoder "/sessions" credentials)
             )
         TryToken ->
             ( { model | msg = "Attempting to load message..." }
@@ -72,27 +68,22 @@ update msg model =
                 Nothing ->
                     Cmd.none
                 Just token ->
-                    Task.perform
-                        PostFail PostSucess <|
-                        getWithJwt
-                            token
-                            ("data" := Json.string)
-                            "/api/data"
+                    Jwt.get token dataDecoder "/api/data"
+                    `Task.onError` (promote401 token)
+                    |> Task.perform PostFail PostSucess
             )
-        LoginSuccess possToken ->
-            case possToken of
-                Result.Ok tokenString ->
-                    ( { model | token = Just tokenString, msg = "" }
-                    , Cmd.none
-                    )
-                Result.Err err ->
-                    ( { model | msg = toString err }, Cmd.none )
+        LoginSuccess token ->
+            ( { model | token = Just token, msg = "" }, Cmd.none )
         LoginFail err ->
             ( { model | msg = toString err }, Cmd.none )
         PostSucess msg ->
             ( { model | msg = msg }, Cmd.none )
         PostFail err ->
-            ( { model | msg = toString err }, Cmd.none )
+            case err of
+                TokenExpired ->
+                    ( { model | msg = "Your token has expired" }, Cmd.none )
+                _ ->
+                    ( { model | msg = toString err }, Cmd.none )
 
 -- VIEW
 
@@ -105,7 +96,6 @@ view model =
         , div
             [ class "row" ]
             [ Html.form
-                -- [ onSubmit' address Submit
                 [ onSubmit Submit
                 , class "col-xs-12"
                 ]
@@ -166,12 +156,5 @@ view model =
             [ style [("color", "red")] ]
             [ text model.msg ]
         ]
-
--- onSubmit' address Msg =
---     onWithOptions
---         "submit"
---         {stopPropagation = True, preventDefault = True}
---         (Json.succeed Msg)
---         (Signal.message address)
 
 -- CMDS

@@ -8,7 +8,6 @@ defmodule JwtExample.SessionController do
     render(conn, "data.json")
   end
 
-  # def create(conn, %{"session" => %{"username" => email, "password" => password}}) do
   def create(conn, %{"username" => email, "password" => password}) do
       case Auth.login_by_username_and_pass(conn, email, password, repo: Repo) do
           {:ok, conn} ->
@@ -21,7 +20,6 @@ defmodule JwtExample.SessionController do
               new_conn
               |> put_resp_header("authorization", "Bearer #{jwt}")
               |> put_resp_header("x-expires", "#{exp}")
-            #   |> render("login.json", jwt: jwt, exp: exp)
               |> render("login.json", jwt: jwt)
           {:error, _reason, conn} ->
               conn

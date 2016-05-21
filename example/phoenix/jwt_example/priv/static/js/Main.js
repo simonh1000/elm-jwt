@@ -8238,18 +8238,19 @@ var _truqu$elm_base64$Base64$encode = function (s) {
 					_truqu$elm_base64$Base64$toCodeList(s)))));
 };
 
-var _user$project$Jwt$getWithJwt = F3(
-	function (token, dec, url) {
-		return A2(
+var _user$project$Jwt$send = F5(
+	function (verb, token, dec, url, body) {
+		var sendtask = A2(
 			_evancz$elm_http$Http$fromJson,
 			dec,
 			A2(
 				_evancz$elm_http$Http$send,
 				_evancz$elm_http$Http$defaultSettings,
 				{
-					verb: 'GET',
+					verb: verb,
 					headers: _elm_lang$core$Native_List.fromArray(
 						[
+							{ctor: '_Tuple2', _0: 'Content-type', _1: 'application/json'},
 							{
 							ctor: '_Tuple2',
 							_0: 'Authorization',
@@ -8257,26 +8258,32 @@ var _user$project$Jwt$getWithJwt = F3(
 						}
 						]),
 					url: url,
-					body: _evancz$elm_http$Http$empty
-				}));
-	});
-var _user$project$Jwt$post$ = F3(
-	function (dec, url, body) {
-		return A2(
-			_evancz$elm_http$Http$fromJson,
-			dec,
-			A2(
-				_evancz$elm_http$Http$send,
-				_evancz$elm_http$Http$defaultSettings,
-				{
-					verb: 'POST',
-					headers: _elm_lang$core$Native_List.fromArray(
-						[
-							{ctor: '_Tuple2', _0: 'Content-type', _1: 'application/json'}
-						]),
-					url: url,
 					body: body
 				}));
+		return sendtask;
+	});
+var _user$project$Jwt$get = F3(
+	function (token, dec, url) {
+		return A5(_user$project$Jwt$send, 'GET', token, dec, url, _evancz$elm_http$Http$empty);
+	});
+var _user$project$Jwt$getWithJwt = _user$project$Jwt$get;
+var _user$project$Jwt$post = function (token) {
+	return A2(_user$project$Jwt$send, 'POST', token);
+};
+var _user$project$Jwt$post$ = F2(
+	function (url, body) {
+		return A2(
+			_evancz$elm_http$Http$send,
+			_evancz$elm_http$Http$defaultSettings,
+			{
+				verb: 'POST',
+				headers: _elm_lang$core$Native_List.fromArray(
+					[
+						{ctor: '_Tuple2', _0: 'Content-type', _1: 'application/json'}
+					]),
+				url: url,
+				body: body
+			});
 	});
 var _user$project$Jwt$unurl = function () {
 	var fix = function (c) {
@@ -8364,25 +8371,54 @@ var _user$project$Jwt$decodeToken = F2(
 		return _elm_lang$core$Result$Err(
 			_user$project$Jwt$TokenProcessingError('Token has invalid shape'));
 	});
+var _user$project$Jwt$isExpired = F2(
+	function (now, token) {
+		var _p5 = A2(
+			_user$project$Jwt$decodeToken,
+			A2(_elm_lang$core$Json_Decode_ops[':='], 'exp', _elm_lang$core$Json_Decode$float),
+			token);
+		if (_p5.ctor === 'Ok') {
+			return _elm_lang$core$Native_Utils.cmp(now, _p5._0 * 1000) > 0;
+		} else {
+			return true;
+		}
+	});
+var _user$project$Jwt$TokenExpired = {ctor: 'TokenExpired'};
 var _user$project$Jwt$HttpError = function (a) {
 	return {ctor: 'HttpError', _0: a};
 };
 var _user$project$Jwt$authenticate = F3(
-	function (packetDecoder, url, body) {
-		return _elm_lang$core$Task$toResult(
+	function (tokenDecoder, url, body) {
+		return A2(
+			_elm_lang$core$Task$mapError,
+			_user$project$Jwt$HttpError,
 			A2(
-				_elm_lang$core$Task$mapError,
-				function (_p5) {
-					return _user$project$Jwt$HttpError(
-						_elm_lang$core$Basics$toString(_p5));
-				},
-				A3(
+				_evancz$elm_http$Http$fromJson,
+				tokenDecoder,
+				A2(
 					_user$project$Jwt$post$,
-					packetDecoder,
 					url,
 					_evancz$elm_http$Http$string(body))));
 	});
+var _user$project$Jwt$promote401 = F2(
+	function (token, err) {
+		var _p6 = err;
+		if ((_p6.ctor === 'BadResponse') && (_p6._0 === 401)) {
+			return A2(
+				_elm_lang$core$Task$andThen,
+				_elm_lang$core$Time$now,
+				function (t) {
+					return A2(_user$project$Jwt$isExpired, t, token) ? _elm_lang$core$Task$fail(_user$project$Jwt$TokenExpired) : _elm_lang$core$Task$fail(
+						_user$project$Jwt$HttpError(err));
+				});
+		} else {
+			return _elm_lang$core$Task$fail(
+				_user$project$Jwt$HttpError(err));
+		}
+	});
 
+var _user$project$Decoders$dataDecoder = A2(_elm_lang$core$Json_Decode_ops[':='], 'data', _elm_lang$core$Json_Decode$string);
+var _user$project$Decoders$tokenStringDecoder = A2(_elm_lang$core$Json_Decode_ops[':='], 'token', _elm_lang$core$Json_Decode$string);
 var _user$project$Decoders$JwtToken = F4(
 	function (a, b, c, d) {
 		return {id: a, username: b, iat: c, expiry: d};
@@ -8472,11 +8508,7 @@ var _user$project$App$update = F2(
 						_elm_lang$core$Task$perform,
 						_user$project$App$LoginFail,
 						_user$project$App$LoginSuccess,
-						A3(
-							_user$project$Jwt$authenticate,
-							A2(_elm_lang$core$Json_Decode_ops[':='], 'token', _elm_lang$core$Json_Decode$string),
-							'/sessions',
-							credentials))
+						A3(_user$project$Jwt$authenticate, _user$project$Decoders$tokenStringDecoder, '/sessions', credentials))
 				};
 			case 'TryToken':
 				return {
@@ -8489,42 +8521,29 @@ var _user$project$App$update = F2(
 						if (_p3.ctor === 'Nothing') {
 							return _elm_lang$core$Platform_Cmd$none;
 						} else {
+							var _p4 = _p3._0;
 							return A3(
 								_elm_lang$core$Task$perform,
 								_user$project$App$PostFail,
 								_user$project$App$PostSucess,
-								A3(
-									_user$project$Jwt$getWithJwt,
-									_p3._0,
-									A2(_elm_lang$core$Json_Decode_ops[':='], 'data', _elm_lang$core$Json_Decode$string),
-									'/api/data'));
+								A2(
+									_elm_lang$core$Task$onError,
+									A3(_user$project$Jwt$get, _p4, _user$project$Decoders$dataDecoder, '/api/data'),
+									_user$project$Jwt$promote401(_p4)));
 						}
 					}()
 				};
 			case 'LoginSuccess':
-				var _p4 = _p0._0;
-				if (_p4.ctor === 'Ok') {
-					return {
-						ctor: '_Tuple2',
-						_0: _elm_lang$core$Native_Utils.update(
-							model,
-							{
-								token: _elm_lang$core$Maybe$Just(_p4._0),
-								msg: ''
-							}),
-						_1: _elm_lang$core$Platform_Cmd$none
-					};
-				} else {
-					return {
-						ctor: '_Tuple2',
-						_0: _elm_lang$core$Native_Utils.update(
-							model,
-							{
-								msg: _elm_lang$core$Basics$toString(_p4._0)
-							}),
-						_1: _elm_lang$core$Platform_Cmd$none
-					};
-				}
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{
+							token: _elm_lang$core$Maybe$Just(_p0._0),
+							msg: ''
+						}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
 			case 'LoginFail':
 				return {
 					ctor: '_Tuple2',
@@ -8544,15 +8563,27 @@ var _user$project$App$update = F2(
 					_1: _elm_lang$core$Platform_Cmd$none
 				};
 			default:
-				return {
-					ctor: '_Tuple2',
-					_0: _elm_lang$core$Native_Utils.update(
-						model,
-						{
-							msg: _elm_lang$core$Basics$toString(_p0._0)
-						}),
-					_1: _elm_lang$core$Platform_Cmd$none
-				};
+				var _p6 = _p0._0;
+				var _p5 = _p6;
+				if (_p5.ctor === 'TokenExpired') {
+					return {
+						ctor: '_Tuple2',
+						_0: _elm_lang$core$Native_Utils.update(
+							model,
+							{msg: 'Your token has expired'}),
+						_1: _elm_lang$core$Platform_Cmd$none
+					};
+				} else {
+					return {
+						ctor: '_Tuple2',
+						_0: _elm_lang$core$Native_Utils.update(
+							model,
+							{
+								msg: _elm_lang$core$Basics$toString(_p6)
+							}),
+						_1: _elm_lang$core$Platform_Cmd$none
+					};
+				}
 		}
 	});
 var _user$project$App$TryToken = {ctor: 'TryToken'};
@@ -8688,11 +8719,11 @@ var _user$project$App$view = function (model) {
 							]))
 					])),
 				function () {
-				var _p5 = model.token;
-				if (_p5.ctor === 'Nothing') {
+				var _p7 = model.token;
+				if (_p7.ctor === 'Nothing') {
 					return _elm_lang$html$Html$text('');
 				} else {
-					var token = A2(_user$project$Jwt$decodeToken, _user$project$Decoders$tokenDecoder, _p5._0);
+					var token = A2(_user$project$Jwt$decodeToken, _user$project$Decoders$tokenDecoder, _p7._0);
 					return A2(
 						_elm_lang$html$Html$div,
 						_elm_lang$core$Native_List.fromArray(

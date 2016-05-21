@@ -12,10 +12,9 @@ defmodule JwtExample.Router do
   pipeline :api do
     plug :accepts, ["json"]
     plug :fetch_session
-    # plug :fetch_flash
+    plug :fetch_flash
     # plug :protect_from_forgery
     # plug :put_secure_browser_headers
-    # plug JwtExample.Auth, repo: JwtExample.Repo
   end
 
   pipeline :api_auth do
