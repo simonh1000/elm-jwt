@@ -4,9 +4,9 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
+import Http
 import Json.Encode as E exposing (Value)
 
-import Http
 import Platform.Cmd exposing (Cmd)
 import Task
 

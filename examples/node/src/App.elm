@@ -5,13 +5,13 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
 import Http
-import Json.Decode as Json exposing ( (:=), Value )
 import Json.Encode as E
 
 import Platform.Cmd exposing (Cmd)
 import Task exposing (toResult)
 
 import Jwt exposing (..)
+import Decoders exposing (..)
 
 -- MODEL
 type Field
@@ -22,25 +22,11 @@ type alias Model =
     { uname : String
     , pword : String
     , token : Maybe String
-    , errorMsg : String
+    , msg : String
     }
 
 init : (Model, Cmd Msg)
 init = (Model "testuser" "testpassword" Nothing "", Cmd.none)
-
-type alias JwtToken =
-    { id: String
-    , username : String
-    , iat : Int
-    , expiry : Int
-    }
-
-tokenDecoder =
-    Json.object4 JwtToken
-        ("id" := Json.string)
-        ("username" := Json.string)
-        ("iat" := Json.int)
-        ("exp" := Json.int)
 
 -- UPDATE
 
@@ -50,10 +36,10 @@ type Msg
     | Submit
     | TryToken
     -- Cmd results
-    | LoginSuccess (Result JwtError String)
+    | LoginSuccess String
     | LoginFail JwtError
     | PostSucess String
-    | PostFail Http.Error
+    | PostFail JwtError
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -72,41 +58,27 @@ update msg model =
                 |> E.encode 0
             in
             ( model
-            , Task.perform
-                LoginFail LoginSuccess <|
-                authenticate
-                    ("token" := Json.string)
-                    "http://localhost:5000/auth"
-                    credentials
-                    -- |> Task.map Data
-                    -- |> Cmd.task
+            , authenticate tokenStringDecoder "http://localhost:5000/auth" credentials
+                |> Task.perform LoginFail LoginSuccess
             )
         TryToken ->
             ( model
-            , Task.perform
-                PostFail PostSucess <|
-                getWithJwt
-                    (Maybe.withDefault "" model.token)
-                    ("data" := Json.string)
-                    "http://localhost:5000/test"
-                -- |> Task.toResult
-                -- |> Task.map Data2
-                -- |> Cmd.task
+            , case model.token of
+                Nothing ->
+                    Cmd.none
+                Just token ->
+                    Jwt.get token dataDecoder "http://localhost:5000/test"
+                    `Task.onError` (promote401 token)
+                    |> Task.perform PostFail PostSucess
             )
-        LoginSuccess possToken ->
-            case possToken of
-                Result.Ok tokenString ->
-                    ( { model | token = Just tokenString, msg = "" }
-                    , Cmd.none
-                    )
-                Result.Err err ->
-                    ( { model | msg = toString err }, Cmd.none )
+        LoginSuccess token ->
+            ( { model | token = Just token, msg = "" }, Cmd.none )
         LoginFail err ->
-            ( { model | errorMsg = toString err }, Cmd.none )
+            ( { model | msg = toString err }, Cmd.none )
         PostSucess msg ->
-            ( { model | errorMsg = msg }, Cmd.none )
+            ( { model | msg = msg }, Cmd.none )
         PostFail err ->
-            ( { model | errorMsg = toString err }, Cmd.none )
+            ( { model | msg = toString err }, Cmd.none )
 
 -- VIEW
 
@@ -114,66 +86,70 @@ view : Model -> Html Msg
 view model =
     div
         [ class "container" ]
-        [ h1 [ ] [ text "elm-jwt with node backend" ]
+        [ h1 [ ] [ text "elm-jwt with Node backend" ]
         , p [] [ text "username = testuser, password = testpassword" ]
         , div
             [ class "row" ]
             [ Html.form
-                -- [ onSubmit' address Submit
                 [ onSubmit Submit
-                , class "col s12"
+                , class "col-xs-12"
                 ]
                 [ div
-                    [ class "row" ]
+                    [  ]
                     [ div
-                        [ class "input-field col s12" ]
-                        [ input
-                            -- [ on "input" (Json.map (Input Uname) targetValue) (Signal.message address)
-                            [ onInput (FormInput Uname)
-                            , id "uname"
-                            , type' "text"
-                            ]
-                            [ text model.uname ]
-                        , label
+                        [ class "form-group" ]
+                        [ label
                             [ for "uname" ]
                             [ text "Username" ]
+                        , input
+                            -- [ on "input" (Json.map (Input Uname) targetValue) (Signal.message address)
+                            [ onInput (FormInput Uname)
+                            , class "form-control"
+                            , id "uname"
+                            , type' "text"
+                            , value model.uname
+                            ]
+                            [ ]
                         ]
                     , div
-                        [ class "input-field col s12" ]
-                        [ input
-                            [ onInput (FormInput Pword)
-                            -- [ on "input" (Json.map (Input Pword) targetValue) (Signal.message address)
-                            , id "pword"
-                            , type' "password"
-                            ]
-                            [ text model.pword ]
-                        , label
+                        [ class "form-group" ]
+                        [ label
                             [ for "pword" ]
                             [ text "Password" ]
-                        , button
-                            [ type' "submit"
-                            , class "btn waves-effect waves-light"
+                        , input
+                            [ onInput (FormInput Pword)
+                            , class "form-control"
+                            , id "pword"
+                            , type' "password"
+                            , value model.pword
                             ]
-                            [ text "Submit"
-                            , i
-                            [ class "material-icons right"
-                            ]
-                            [ text "send" ]
-                            ]
+                            [ ]
                         ]
+                    , button
+                        [ type' "submit"
+                        , class "btn btn-default"
+                        ]
+                        [ text "Submit" ]
                     ]
                 ]
             ]
-        , p [] [ text <|
-                    if model.token == Nothing
-                        then ""
-                        else toString (decodeToken tokenDecoder <| Maybe.withDefault "" model.token) ]
-        , p [] [ text model.errorMsg ]
-        , button
-            [ class "btn waves-effect waves-light"
-            , onClick TryToken
-            ]
-            [ text "try token" ]
+        , case model.token of
+            Nothing -> text ""
+            Just tokenString ->
+                let token =
+                    decodeToken tokenDecoder tokenString
+                in
+                div []
+                    [ p [] [ text <| toString token ]
+                    , button
+                        [ class "btn btn-warning"
+                        , onClick TryToken
+                        ]
+                        [ text "Try token" ]
+                    ]
+        , p
+            [ style [("color", "red")] ]
+            [ text model.msg ]
         ]
 
 -- onSubmit' address Msg =
