@@ -1,8 +1,6 @@
 var	gulp           = require('gulp'),
-	nodemon        = require('gulp-nodemon'),
 	concat         = require('gulp-concat'),
-	jade           = require('gulp-jade'),
-	browserSync    = require('browser-sync').create(),
+	// browserSync    = require('browser-sync').create(),
 	sourcemaps     = require('gulp-sourcemaps'),
 	sass           = require('gulp-sass'),
 	elm            = require('gulp-elm'),
@@ -13,36 +11,13 @@ var	gulp           = require('gulp'),
 	uglify         = require('gulp-uglify');
 
 var paths = {
-	dist    : "./jwt_example/priv/static/",
-	server  : './server',
-	html    : ['src/index.jade'],
-	scss    : ['src/sass/styles.scss'],
-	elm     : "src/**/*.elm",
-	elmMain : "src/Main.elm"
+	dist    : "priv/static/",
+	scss    : ['web/elm/sass/*.scss'],
+	elm     : "web/elm/**/*.elm",
+	elmMain : "web/elm/Main.elm"
 };
 
 var production = false;
-
-/*
- * S E R V E R
- */
-// gulp.task('serve', function(cb){
-// 	var called = false;
-// 	return nodemon({
-// 		"script": 'server/bin/www',     // port 5000 by default
-// 	    "watch": "server",
-// 		"env": {PORT : 5000}
-// 	})
-// 	.on('start', function () {
-// 		if (!called) {
-// 	       called = true;
-// 	       cb();
-// 		}
-//   	})
-// 	.on('restart', function () {
-//       console.log('restarted!')
-//     })
-// });
 
 /*
  * H T M L / C S S
@@ -58,10 +33,10 @@ gulp.task('html', function() {
 gulp.task('sass', function() {
 	return gulp.src(paths.scss)
 	.pipe(sass().on('error', sass.logError))
-	.pipe(concat('styles.css'))
+	.pipe(concat('app.css'))
 	.pipe( gulpif(production, minifyCss()) )    // minify in production
 	.pipe(gulp.dest(paths.dist + "/css"))
-	.pipe(browserSync.stream()); 			// injects new styles without page reload!
+	// .pipe(browserSync.stream()); 			// injects new styles without page reload!
 });
 
 gulp.task('compilation', ['html', 'sass']);
@@ -80,7 +55,7 @@ gulp.task('compilation', ['html', 'sass']);
      return gulp.src(paths.elmMain)             // "./src/Main.elm"
          .pipe(elm())
          .on('error', onErrorHandler)
-		 .pipe( gulpif(production, uglify()) )   // uglify
+		//  .pipe( gulpif(production, uglify()) )   // uglify
          .pipe(gulp.dest(paths.dist + "/js"));
  })
 
@@ -103,11 +78,11 @@ gulp.task('compilation', ['html', 'sass']);
  * P R O D U C T I O N
  * T B C
  */
-var del = require('del');
-gulp.task('del', function(cb) {
-	del(['./dist/*'])
-	.then( () => cb() );
-});
+// var del = require('del');
+// gulp.task('del', function(cb) {
+// 	del(['./dist/*'])
+// 	.then( () => cb() );
+// });
 
 gulp.task('build', function() {
 // gulp.task('build', ['del'], function() {
