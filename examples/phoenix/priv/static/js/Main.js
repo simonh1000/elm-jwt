@@ -8943,10 +8943,67 @@ var _truqu$elm_base64$Base64$encode = function (s) {
 					_truqu$elm_base64$Base64$toCodeList(s)))));
 };
 
+var _user$project$Jwt$promoteError = function (rawError) {
+	var _p0 = rawError;
+	if (_p0.ctor === 'RawTimeout') {
+		return _evancz$elm_http$Http$Timeout;
+	} else {
+		return _evancz$elm_http$Http$NetworkError;
+	}
+};
+var _user$project$Jwt$errorDecoder = A2(
+	_elm_lang$core$Json_Decode$map,
+	_elm_lang$core$Basics$toString,
+	A2(_elm_lang$core$Json_Decode_ops[':='], 'errors', _elm_lang$core$Json_Decode$value));
+var _user$project$Jwt$handleResponse = F2(
+	function (handle, response) {
+		if ((_elm_lang$core$Native_Utils.cmp(200, response.status) < 1) && (_elm_lang$core$Native_Utils.cmp(response.status, 300) < 0)) {
+			var _p1 = response.value;
+			if (_p1.ctor === 'Text') {
+				return handle(_p1._0);
+			} else {
+				return _elm_lang$core$Task$fail(
+					_evancz$elm_http$Http$UnexpectedPayload('Response body is a blob, expecting a string.'));
+			}
+		} else {
+			var _p2 = response.value;
+			if (_p2.ctor === 'Text') {
+				var errorMessage = function () {
+					var _p3 = A2(_elm_lang$core$Json_Decode$decodeString, _user$project$Jwt$errorDecoder, _p2._0);
+					if (_p3.ctor === 'Ok') {
+						return _p3._0;
+					} else {
+						return response.statusText;
+					}
+				}();
+				return _elm_lang$core$Task$fail(
+					A2(_evancz$elm_http$Http$BadResponse, response.status, errorMessage));
+			} else {
+				return _elm_lang$core$Task$fail(
+					_evancz$elm_http$Http$UnexpectedPayload('Response body is a blob, expecting a string.'));
+			}
+		}
+	});
+var _user$project$Jwt$fromJson = F2(
+	function (decoder, response) {
+		var decode = function (str) {
+			var _p4 = A2(_elm_lang$core$Json_Decode$decodeString, decoder, str);
+			if (_p4.ctor === 'Ok') {
+				return _elm_lang$core$Task$succeed(_p4._0);
+			} else {
+				return _elm_lang$core$Task$fail(
+					_evancz$elm_http$Http$UnexpectedPayload(_p4._0));
+			}
+		};
+		return A2(
+			_elm_lang$core$Task$andThen,
+			A2(_elm_lang$core$Task$mapError, _user$project$Jwt$promoteError, response),
+			_user$project$Jwt$handleResponse(decode));
+	});
 var _user$project$Jwt$send = F5(
 	function (verb, token, dec, url, body) {
 		var sendtask = A2(
-			_evancz$elm_http$Http$fromJson,
+			_user$project$Jwt$fromJson,
 			dec,
 			A2(
 				_evancz$elm_http$Http$send,
@@ -8975,34 +9032,31 @@ var _user$project$Jwt$getWithJwt = _user$project$Jwt$get;
 var _user$project$Jwt$post = function (token) {
 	return A2(_user$project$Jwt$send, 'POST', token);
 };
-var _user$project$Jwt$post$ = F3(
-	function (dec, url, body) {
+var _user$project$Jwt$post$ = F2(
+	function (url, body) {
 		return A2(
-			_evancz$elm_http$Http$fromJson,
-			dec,
-			A2(
-				_evancz$elm_http$Http$send,
-				_evancz$elm_http$Http$defaultSettings,
-				{
-					verb: 'POST',
-					headers: _elm_lang$core$Native_List.fromArray(
-						[
-							{ctor: '_Tuple2', _0: 'Content-type', _1: 'application/json'}
-						]),
-					url: url,
-					body: body
-				}));
+			_evancz$elm_http$Http$send,
+			_evancz$elm_http$Http$defaultSettings,
+			{
+				verb: 'POST',
+				headers: _elm_lang$core$Native_List.fromArray(
+					[
+						{ctor: '_Tuple2', _0: 'Content-type', _1: 'application/json'}
+					]),
+				url: url,
+				body: body
+			});
 	});
 var _user$project$Jwt$unurl = function () {
 	var fix = function (c) {
-		var _p0 = c;
-		switch (_p0.valueOf()) {
+		var _p5 = c;
+		switch (_p5.valueOf()) {
 			case '-':
 				return _elm_lang$core$Native_Utils.chr('+');
 			case '_':
 				return _elm_lang$core$Native_Utils.chr('/');
 			default:
-				return _p0;
+				return _p5;
 		}
 	};
 	return _elm_lang$core$String$map(fix);
@@ -9014,11 +9068,11 @@ var _user$project$Jwt$TokenProcessingError = function (a) {
 	return {ctor: 'TokenProcessingError', _0: a};
 };
 var _user$project$Jwt$fixlength = function (s) {
-	var _p1 = A2(
+	var _p6 = A2(
 		_elm_lang$core$Basics_ops['%'],
 		_elm_lang$core$String$length(s),
 		4);
-	switch (_p1) {
+	switch (_p6) {
 		case 0:
 			return _elm_lang$core$Result$Ok(s);
 		case 2:
@@ -9043,37 +9097,37 @@ var _user$project$Jwt$decodeToken = F2(
 			'.',
 			_user$project$Jwt$unurl(s));
 		var f2 = A2(_elm_lang$core$List$map, _user$project$Jwt$fixlength, f1);
-		var _p2 = f2;
-		_v2_2:
+		var _p7 = f2;
+		_v7_2:
 		do {
-			if ((_p2.ctor === '::') && (_p2._1.ctor === '::')) {
-				if (_p2._1._0.ctor === 'Err') {
-					if ((_p2._1._1.ctor === '::') && (_p2._1._1._1.ctor === '[]')) {
-						return _elm_lang$core$Result$Err(_p2._1._0._0);
+			if ((_p7.ctor === '::') && (_p7._1.ctor === '::')) {
+				if (_p7._1._0.ctor === 'Err') {
+					if ((_p7._1._1.ctor === '::') && (_p7._1._1._1.ctor === '[]')) {
+						return _elm_lang$core$Result$Err(_p7._1._0._0);
 					} else {
-						break _v2_2;
+						break _v7_2;
 					}
 				} else {
-					if ((_p2._1._1.ctor === '::') && (_p2._1._1._1.ctor === '[]')) {
-						var _p3 = _truqu$elm_base64$Base64$decode(_p2._1._0._0);
-						if (_p3.ctor === 'Ok') {
-							var _p4 = A2(_elm_lang$core$Json_Decode$decodeString, dec, _p3._0);
-							if (_p4.ctor === 'Ok') {
-								return _elm_lang$core$Result$Ok(_p4._0);
+					if ((_p7._1._1.ctor === '::') && (_p7._1._1._1.ctor === '[]')) {
+						var _p8 = _truqu$elm_base64$Base64$decode(_p7._1._0._0);
+						if (_p8.ctor === 'Ok') {
+							var _p9 = A2(_elm_lang$core$Json_Decode$decodeString, dec, _p8._0);
+							if (_p9.ctor === 'Ok') {
+								return _elm_lang$core$Result$Ok(_p9._0);
 							} else {
 								return _elm_lang$core$Result$Err(
-									_user$project$Jwt$TokenDecodeError(_p4._0));
+									_user$project$Jwt$TokenDecodeError(_p9._0));
 							}
 						} else {
 							return _elm_lang$core$Result$Err(
-								_user$project$Jwt$TokenProcessingError(_p3._0));
+								_user$project$Jwt$TokenProcessingError(_p8._0));
 						}
 					} else {
-						break _v2_2;
+						break _v7_2;
 					}
 				}
 			} else {
-				break _v2_2;
+				break _v7_2;
 			}
 		} while(false);
 		return _elm_lang$core$Result$Err(
@@ -9081,12 +9135,12 @@ var _user$project$Jwt$decodeToken = F2(
 	});
 var _user$project$Jwt$isExpired = F2(
 	function (now, token) {
-		var _p5 = A2(
+		var _p10 = A2(
 			_user$project$Jwt$decodeToken,
 			A2(_elm_lang$core$Json_Decode_ops[':='], 'exp', _elm_lang$core$Json_Decode$float),
 			token);
-		if (_p5.ctor === 'Ok') {
-			return _elm_lang$core$Native_Utils.cmp(now, _p5._0 * 1000) > 0;
+		if (_p10.ctor === 'Ok') {
+			return _elm_lang$core$Native_Utils.cmp(now, _p10._0 * 1000) > 0;
 		} else {
 			return true;
 		}
@@ -9096,20 +9150,22 @@ var _user$project$Jwt$HttpError = function (a) {
 	return {ctor: 'HttpError', _0: a};
 };
 var _user$project$Jwt$authenticate = F3(
-	function (dec, url, body) {
+	function (tokenDecoder, url, body) {
 		return A2(
 			_elm_lang$core$Task$mapError,
 			_user$project$Jwt$HttpError,
-			A3(
-				_user$project$Jwt$post$,
-				dec,
-				url,
-				_evancz$elm_http$Http$string(body)));
+			A2(
+				_evancz$elm_http$Http$fromJson,
+				tokenDecoder,
+				A2(
+					_user$project$Jwt$post$,
+					url,
+					_evancz$elm_http$Http$string(body))));
 	});
 var _user$project$Jwt$promote401 = F2(
 	function (token, err) {
-		var _p6 = err;
-		if ((_p6.ctor === 'BadResponse') && (_p6._0 === 401)) {
+		var _p11 = err;
+		if ((_p11.ctor === 'BadResponse') && (_p11._0 === 401)) {
 			return A2(
 				_elm_lang$core$Task$andThen,
 				_elm_lang$core$Time$now,

@@ -1,0 +1,8 @@
+node_modules
+elm-stuff
+_build
+deps
+dist
+
+gitignore
+.DS_Store
