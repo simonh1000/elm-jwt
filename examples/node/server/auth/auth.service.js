@@ -5,7 +5,7 @@ var jwt = require("jsonwebtoken");
 var jwtSecret = "elm jwt";
 
 var jwtSign = function (user) {
-    var options = { expiresIn: "1h" };
+    var options = { expiresIn: 30 };
     console.log("jwtSign", user);
     return jwt.sign(user, jwtSecret, options);
 };

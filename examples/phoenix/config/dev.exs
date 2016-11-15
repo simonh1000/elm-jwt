@@ -46,5 +46,5 @@ config :guardian, Guardian,
     allowed_algos: ["HS512"],
     secret_key: "lksjdlkjsdflkjsdf",
     issuer: "JwtExample",
-    ttl: { 30, :seconds },
+    ttl: { 15, :seconds },
     serializer: JwtExample.GuardianSerializer

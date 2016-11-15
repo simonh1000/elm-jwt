@@ -6,7 +6,7 @@ var apidefault = require('../api/default');
 var auth = require('../auth');
 
 module.exports = function (app) {
-    app.use('/', apidefault);
+    app.use('/api', apidefault);
     app.use('/auth', auth);
 
     app.use(express.static(path.join(__dirname, '../../dist')));

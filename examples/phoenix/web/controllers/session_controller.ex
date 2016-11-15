@@ -14,7 +14,7 @@ defmodule JwtExample.SessionController do
               new_conn = Guardian.Plug.api_sign_in(conn, conn.assigns[:current_user])
               jwt = Guardian.Plug.current_token(new_conn)
               {:ok, claims} = Guardian.Plug.claims(new_conn)
-              IO.inspect(claims)
+            #   IO.inspect(claims)
               exp = Map.get(claims, "exp")
 
               new_conn
