@@ -4,7 +4,7 @@ A collection of Elm Http and Json decoder functions to support Jwt authenticatio
 
 ## Version 3.0.0 (Elm 0.18)
 
-The one breaking change is the removal of `getWithJwt` (use `Jet.get` instead).
+Elm's Http library gas undergone a major rewrite for 0.18 nad this library depends upon it. As a result much has changed and you are encouraged to relook at the examples and the docs.
 
 Elm 0.17 users should use version 2.0.0.
 
