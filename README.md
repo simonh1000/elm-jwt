@@ -2,9 +2,13 @@
 
 A collection of Elm Http and Json decoder functions to support Jwt authentication.
 
-## Version 3.0.0 (Elm 0.18)
+## Version 4.0.0 (Elm 0.18)
 
 Elm's Http library has undergone a major rewrite for 0.18 and this library depends upon it. As a result much has changed and you are encouraged to re-look at the examples and the docs.
+
+## Version 3.0.0 (Elm 0.18)
+
+Initial version
 
 Elm 0.17 users should use version 2.0.0.
 

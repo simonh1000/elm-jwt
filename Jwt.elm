@@ -1,10 +1,22 @@
-module Jwt exposing
-    ( JwtError(..)
-    , authenticate, decodeToken
-    , createRequest, get, get_, post, put
-    , isExpired, promote401)
+module Jwt
+    exposing
+        ( JwtError(..)
+        , decodeToken
+        , isExpired
+        , createRequest
+        , authenticate
+        , send
+        , sendCheckExpired
+        , get
+        , post
+        , put
+        , delete
+        , promote401
+        , handleError
+        , checkTokenExpirey
+        )
 
-{-| Helper functions for Jwt tokens.
+{-| Helper functions for working with Jwt tokens and authenticated CRUD APIs.
 
 This package provides functions for reading tokens, and for using them to make
 authenticated Http requests.
@@ -13,11 +25,15 @@ authenticated Http requests.
 @docs decodeToken, isExpired
 
 # Authenticated Http requests
-@docs authenticate, createRequest, get, get_, post, put, promote401
+@docs createRequest, send, sendCheckExpired, get, post, put, delete
 
-# Errors
-@docs JwtError
+# `JwtError`s and Http.Error handling
+@docs JwtError, promote401, handleError, checkTokenExpirey
+
+# Logging in
+@docs authenticate
 -}
+
 import Http exposing (request, send, emptyBody, header, expectJson, jsonBody, toTask, Request)
 import Task exposing (Task)
 import Base64
@@ -25,23 +41,25 @@ import String
 import Time exposing (Time)
 import Json.Decode as Json exposing (field, Value)
 
-{-| We distinguish between various errors
- - From Http.Error. We pass these straight through unless using `promote401`,
- - 401 (Unauthorized) errors, due either to token expiry or some other reason
+
+{-| The following errors are modeled
+ - Any Http.Error, other than a 401
+ - 401 (Unauthorized), due either to token expiry or e.g. inadequate permissions
  - issues with processing (e.g. base 64 decoding) the token, and
  - problems decoding the json data within the content of the token
 -}
 type JwtError
     = HttpError Http.Error
+    | Unauthorized
     | TokenExpired
-    | TokenNotAccepted
+    | TokenNotExpired
     | TokenProcessingError String
     | TokenDecodeError String
 
 
+
 -- TOKEN PROCESSING
 
-type alias Token = String
 
 {-| decodeToken parses the token, checking that it meets the Jwt standards.
 
@@ -49,63 +67,94 @@ type alias Token = String
 
 In the event of success, `decodeToken` returns an Elm record structure using the JSON Decoder.
 -}
-decodeToken : Json.Decoder a -> Token -> Result JwtError a
+decodeToken : Json.Decoder a -> String -> Result JwtError a
 decodeToken dec token =
     let
-        f1 = String.split "." <| unurl token
-        f2 = List.map fixlength f1
+        f1 =
+            String.split "." <| unurl token
+
+        f2 =
+            List.map fixlength f1
     in
-    case f2 of
-        (_ :: Result.Err e :: _ :: []) ->
-            Result.Err e
-        (_ :: Result.Ok encBody :: _ :: []) ->
-            case Base64.decode encBody of
-                Result.Ok body ->
-                    case Json.decodeString dec body of
-                        Result.Ok x -> Result.Ok x
-                        Result.Err e -> Result.Err (TokenDecodeError e)
-                Result.Err e -> Result.Err (TokenProcessingError e)
-        _ -> Result.Err <| TokenProcessingError "Token has invalid shape"
+        case f2 of
+            _ :: (Result.Err e) :: _ :: [] ->
+                Result.Err e
 
--- Private functions
-unurl : String -> String
-unurl =
-    let fix c =
-        case c of
-            '-' -> '+'
-            '_' -> '/'
-            c   -> c
-    in String.map fix
+            _ :: (Result.Ok encBody) :: _ :: [] ->
+                case Base64.decode encBody of
+                    Result.Ok body ->
+                        case Json.decodeString dec body of
+                            Result.Ok x ->
+                                Result.Ok x
 
-fixlength : String -> Result JwtError String
-fixlength s =
-        case String.length s % 4 of
-            0 ->
-                Result.Ok s
-            2 ->
-                Result.Ok <| String.concat [s, "=="]
-            3 ->
-                Result.Ok <| String.concat [s, "="]
+                            Result.Err e ->
+                                Result.Err (TokenDecodeError e)
+
+                    Result.Err e ->
+                        Result.Err (TokenProcessingError e)
+
             _ ->
-                Result.Err <| TokenProcessingError "Wrong length"
+                Result.Err <| TokenProcessingError "Token has invalid shape"
 
-{-| `Checks whether a token has expired, and returns True or False, or
+
+{-| Checks whether a token has expired, and returns True or False, or
 any error that occurred while decoding the token.
 
 Note: This function assumes that the expiry was set in seconds and thus
 multiplies by 1000 to compare with Javascript time (in milliseconds).
 You may need to write a custom version if your server-side Jwt library works differently.
 -}
-isExpired : Time -> Token -> Result JwtError Bool
+isExpired : Time -> String -> Result JwtError Bool
 isExpired now token =
     decodeToken (field "exp" Json.float) token
-    |> Result.map (\exp -> now > exp * 1000)
+        |> Result.map (\exp -> now > exp * 1000)
 
 
--- AUTHENTICATED HTTP REQUESTS
 
-{-| `authenticate` is a standard Http POST method containing login credentials, and using
-a json decoder to extract the returned token.
+-- Private functions
+
+
+unurl : String -> String
+unurl =
+    let
+        fix c =
+            case c of
+                '-' ->
+                    '+'
+
+                '_' ->
+                    '/'
+
+                c ->
+                    c
+    in
+        String.map fix
+
+
+fixlength : String -> Result JwtError String
+fixlength s =
+    case String.length s % 4 of
+        0 ->
+            Result.Ok s
+
+        2 ->
+            Result.Ok <| String.concat [ s, "==" ]
+
+        3 ->
+            Result.Ok <| String.concat [ s, "=" ]
+
+        _ ->
+            Result.Err <| TokenProcessingError "Wrong length"
+
+
+
+{- ====================================================
+    LOGGING IN - GETTING A TOKEN
+   ====================================================
+-}
+
+
+{-| `authenticate` creates an Http.Request based on login credentials.
 
     submitCredentials : Model -> Cmd Msg
     submitCredentials model =
@@ -113,19 +162,25 @@ a json decoder to extract the returned token.
             [ ("username", E.string model.uname)
             , ("password", E.string model.pword)
             ]
-        |> authenticate Auth "/sessions" tokenStringDecoder
+        |> authenticateRequest "/sessions" tokenStringDecoder
 -}
-authenticate : (Result Http.Error a -> msg) -> String -> Json.Decoder a -> Value -> Cmd msg
-authenticate msgCreator url dec credentials =
+authenticate : String -> Json.Decoder a -> Value -> Request a
+authenticate url dec credentials =
     Http.post url (jsonBody credentials) dec
-    |> send msgCreator
+
+
+
+{- ====================================================
+    MAKING AUTHENTICATED API CALLS
+   ====================================================
+-}
 
 
 {-| createRequest creates a Http.Request with the token added to the headers, and
 sets the `withCredentials` field to True.
 -}
-createRequest : String -> Token -> String -> Json.Decoder a -> Http.Body -> Request a
-createRequest method token url dec body =
+createRequest : String -> String -> String -> Http.Body -> Json.Decoder a -> Request a
+createRequest method token url body dec =
     request
         { method = method
         , headers =
@@ -139,85 +194,121 @@ createRequest method token url dec body =
         , withCredentials = True
         }
 
+
+{-| `send` replaces `Http.send`. On receipt of a 401 error, it returns a Jwt.Unauthorized.
+-}
+send : (Result JwtError a -> msg) -> Request a -> Cmd msg
+send msgCreator =
+    Http.send (conv msgCreator)
+
+
+conv : (Result JwtError a -> msg) -> (Result Http.Error a -> msg)
+conv fn =
+    -- \res ->
+    --     fn (Result.mapError promote401 res)
+    fn << Result.mapError promote401
+
+
+{-| `sendCheckExpired` is similar to `send` but, on receiving a 401, it carries out a further check to
+determine whether the token has expired.
+-}
+sendCheckExpired : String -> (Result JwtError a -> msg) -> Request a -> Cmd msg
+sendCheckExpired token msgCreator request =
+    request
+        |> toTask
+        |> Task.map Result.Ok
+        |> Task.onError (Task.map Err << handleError token)
+        |> Task.perform msgCreator
+
+
 {-| `get` is a replacement for `Http.get` that returns a Http.Request with the token
-attached the headers.
+attached to the headers.
 
-    Task.perform
-        PostFail PostSucess
-        (get token dataDecoder "/api/data")
+    getData : String -> Cmd Msg
+    getData token =
+        Jwt.get token "/api/data" dataDecoder
+            |> Jwt.send DataResult
 -}
-get : Token -> String -> Json.Decoder a -> Request a
+get : String -> String -> Json.Decoder a -> Request a
 get token url dec =
-    createRequest "GET" token url dec Http.emptyBody
+    createRequest "GET" token url Http.emptyBody dec
 
-{-| `get_` takes the same parameters as `get`, but returns a `Task` where a 401 Unauthorized error
-due to token expiry has been converted into a `TokenExpired`.
 
-    update ... =
-    GetResult (Result.Err err) ->
-        case err of
-            Jwt.TokenExpired ->
-                { model | msg = "Token expired" } ! []
-            _ ->
-                { model | msg = toString err } ! []
-
-    [...]
-    tryToken : String -> Cmd Msg
-    tryToken token =
-        Jwt.get_ token "/api/data" dataDecoder
-        |> Task.perform GetResult
+{-| post is a replacement for `Http.post` that returns a Http.Request with the token
+attached to the headers.
 -}
-get_ : Token -> String -> Json.Decoder a -> Task Never (Result JwtError a)
-get_ token url dec =
-    createRequest "GET" token url dec Http.emptyBody
-    |> toTask
-    |> Task.map Result.Ok
-    |> Task.onError (promote401 token)
+post : String -> String -> Http.Body -> Json.Decoder a -> Request a
+post =
+    createRequest "POST"
 
-{-| post is a replacement for `Http.post` that attaches a provided Jwt token
-to the headers.
--}
-post : (Result Http.Error a -> msg) -> Token -> Json.Decoder a -> String -> Http.Body -> Cmd msg
-post msgCreator token dec url body =
-    createRequest "POST" token url dec body
-    |> send msgCreator
 
-{-| `put` provides `Http.put` with the token attached to the headers.
+{-| `put` returns a PUT Http.Request with the token attached to the headers.
 -}
-put : (Result Http.Error a -> msg) -> Token -> Json.Decoder a -> String -> Http.Body -> Cmd msg
-put msgCreator token dec url body =
-    createRequest "PUT" token url dec body
-    |> send msgCreator
+put : String -> String -> Http.Body -> Json.Decoder a -> Request a
+put =
+    createRequest "PUT"
+
+
+{-| `delete` returns a DELETE Http.Request with the token attached to the headers.
+-}
+delete : String -> String -> Json.Decoder a -> Request a
+delete token url dec =
+    createRequest "DELETE" token url Http.emptyBody dec
+
 
 {-| Examines a 401 Unauthorized reponse, and converts the error to TokenExpired
 when that is the case.
 
-    getAuth : Token -> String -> Json.Decoder a -> Task Never (Result JwtError a)
+    getAuth : String -> String -> Json.Decoder a -> Task Never (Result JwtError a)
     getAuth token url dec =
-        createRequest "GET" token url dec Http.emptyBody
+        createRequest "GET" token url Http.emptyBody dec
         |> toTask
         |> Task.map Result.Ok
         |> Task.onError (promote401 token)
 -}
-promote401 : Token -> Http.Error -> Task Never (Result JwtError a)
-promote401 token err =
-    let defaultError = Task.succeed <| Result.Err (HttpError err)
-    in
+promote401 : Http.Error -> JwtError
+promote401 err =
     case err of
-        Http.BadStatus {status} ->
+        Http.BadStatus { status } ->
             if status.code == 401 then
-                Time.now
-                |> Task.andThen
-                    (\t ->
-                        case isExpired t token of
-                            Result.Ok True ->
-                                Task.succeed <| Result.Err TokenExpired
-                            Result.Ok False ->
-                                -- Although the token is not expired, server rejected request for some other reason
-                                Task.succeed <| Result.Err TokenNotAccepted
-                            Result.Err e ->
-                                Task.succeed <| Result.Err e)
+                Unauthorized
             else
-                defaultError
+                HttpError err
+
         _ ->
-            defaultError
+            HttpError err
+
+
+{-| Takes an Http.Error. If it is a 401 then it chekcs for expirey.
+-}
+handleError : String -> Http.Error -> Task Never JwtError
+handleError token err =
+    case promote401 err of
+        Unauthorized ->
+            checkTokenExpirey token
+
+        _ ->
+            Task.succeed (HttpError err)
+
+
+{-| Checks a token for expirey.
+-}
+checkTokenExpirey : String -> Task Never JwtError
+checkTokenExpirey token =
+    Time.now
+        |> Task.andThen (checkUnacceptedToken token >> Task.succeed)
+
+
+checkUnacceptedToken : String -> Time -> JwtError
+checkUnacceptedToken token now =
+    case isExpired now token of
+        Result.Ok True ->
+            TokenExpired
+
+        Result.Ok False ->
+            -- Although the token is not expired, server rejected request for some other reason
+            TokenNotExpired
+
+        Result.Err jwtErr ->
+            -- Pass through a decoding error
+            jwtErr
