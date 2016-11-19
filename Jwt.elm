@@ -184,28 +184,24 @@ createRequest method token url body dec =
     request
         { method = method
         , headers =
-            [ header "Content-type" "application/json"
-            , header "Authorization" ("Bearer " ++ token)
-            ]
+            [ header "Authorization" ("Bearer " ++ token) ]
         , url = url
         , body = body
         , expect = expectJson dec
         , timeout = Nothing
-        , withCredentials = True
+        , withCredentials = False
         }
 
 
 {-| `send` replaces `Http.send`. On receipt of a 401 error, it returns a Jwt.Unauthorized.
 -}
 send : (Result JwtError a -> msg) -> Request a -> Cmd msg
-send msgCreator =
-    Http.send (conv msgCreator)
+send msgCreator req =
+    Http.send (conv msgCreator) req
 
 
 conv : (Result JwtError a -> msg) -> (Result Http.Error a -> msg)
 conv fn =
-    -- \res ->
-    --     fn (Result.mapError promote401 res)
     fn << Result.mapError promote401
 
 
@@ -236,6 +232,13 @@ get token url dec =
 
 {-| post is a replacement for `Http.post` that returns a Http.Request with the token
 attached to the headers.
+
+** Note that is important to use jsonBody to ensure that the 'application/json' is added to the headers **
+
+    postContent : Token -> Json.Decoder a -> E.Value -> String -> Request a
+    postContent token dec value url =
+        Jwt.post token url (Http.jsonBody value) (phoenixDecoder dec)
+            |> Jwt.send ContentResult
 -}
 post : String -> String -> Http.Body -> Json.Decoder a -> Request a
 post =
@@ -279,7 +282,7 @@ promote401 err =
             HttpError err
 
 
-{-| Takes an Http.Error. If it is a 401 then it chekcs for expirey.
+{-| Takes an Http.Error. If it is a 401 then it checks for expirey.
 -}
 handleError : String -> Http.Error -> Task Never JwtError
 handleError token err =
