@@ -34,7 +34,7 @@ type alias Model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model "testuser" "testpassword" Nothing "", Cmd.none )
+    Model "testuser" "testpassword" Nothing "" ! []
 
 
 
@@ -44,80 +44,112 @@ init =
 type
     Msg
     -- User generated Msg
-    = Submit
+    = Login
     | TryToken
-    | TryWithInvalidToken
+    | TryInvalidToken
+    | TryErrorRoute
       -- Component messages
     | FormInput Field String
       -- Cmd results
     | Auth (Result Http.Error String)
     | GetResult (Result JwtError String)
-    | InvalidTokenResult (Result JwtError String)
+    | ErrorRouteResult (Result JwtError String)
+    | ServerFail_ JwtError
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
     case message of
         FormInput inputId val ->
-            let
-                res =
-                    case inputId of
-                        Uname ->
-                            { model | uname = val }
+            case inputId of
+                Uname ->
+                    { model | uname = val } ! []
 
-                        Pword ->
-                            { model | pword = val }
-            in
-                res ! []
+                Pword ->
+                    { model | pword = val } ! []
 
-        Submit ->
-            ( model
-            , submitCredentials model
-            )
+        Login ->
+            model ! [ submitCredentials model ]
 
         TryToken ->
-            case model.token of
-                Just token ->
-                    { model | msg = "Contacting server..." } ! [ tryToken token ]
-
-                Nothing ->
-                    { model | msg = "No token" } ! []
-
-        TryWithInvalidToken ->
             ( { model | msg = "Contacting server..." }
-            , tryWithInvalidToken
+            , model.token
+                |> Maybe.map tryToken
+                |> Maybe.withDefault Cmd.none
             )
 
-        Auth (Result.Ok token) ->
-            { model | token = Just token, msg = "" } ! []
+        TryInvalidToken ->
+            { model | msg = "Contacting server..." } ! [ tryToken "invalid token" ]
 
-        Auth (Result.Err err) ->
-            { model | msg = toString err } ! []
+        TryErrorRoute ->
+            ( { model | msg = "Contacting server..." }
+            , model.token
+                |> Maybe.map tryErrorRoute
+                |> Maybe.withDefault Cmd.none
+            )
 
-        GetResult (Result.Ok msg) ->
-            { model | msg = msg } ! []
+        Auth res ->
+            case res of
+                Result.Ok token ->
+                    { model | token = Just token, msg = "" } ! []
 
-        GetResult (Result.Err err) ->
-            case err of
-                Jwt.TokenExpired ->
-                    { model | msg = "Token expired" } ! []
+                Result.Err err ->
+                    { model | msg = getPhoenixError err } ! []
 
-                Jwt.HttpError error ->
-                    { model | msg = getPhoenixError error } ! []
+        GetResult res ->
+            case res of
+                Ok msg ->
+                    { model | msg = msg } ! []
 
-                _ ->
-                    { model | msg = toString err } ! []
+                Err jwtErr ->
+                    failHandler_ ServerFail_ jwtErr model
 
-        InvalidTokenResult (Result.Ok msg) ->
-            { model | msg = msg } ! []
+        ErrorRouteResult res ->
+            case res of
+                Ok r ->
+                    { model | msg = toString r } ! []
 
-        InvalidTokenResult (Result.Err err) ->
-            { model | msg = toString err } ! []
+                Err jwtErr ->
+                    failHandler_ ServerFail_ jwtErr model
+
+        ServerFail_ jwtErr ->
+            failHandler_ ServerFail_ jwtErr model
+
+
+failHandler_ : (JwtError -> Msg) -> JwtError -> Model -> ( Model, Cmd Msg )
+failHandler_ msgCreator jwtErr model =
+    case model.token of
+        Just token ->
+            failHandler ServerFail_ token jwtErr model
+
+        Nothing ->
+            { model | msg = toString jwtErr } ! []
 
 
 
--- When Phoenix experiences an error, it also returns details of the changeset errors,
--- which we can extract
+-- We recurse at most once because Jwt.checkTokenExpirey cannot return Jwt.Unauthorized
+
+
+failHandler : (JwtError -> msg) -> String -> JwtError -> { model | msg : String } -> ( { model | msg : String }, Cmd msg )
+failHandler msgCreator token jwtErr model =
+    case jwtErr of
+        Jwt.Unauthorized ->
+            ( { model | msg = "Unauthorized" }
+            , Jwt.checkTokenExpirey token
+                |> Task.perform msgCreator
+            )
+
+        Jwt.TokenExpired ->
+            { model | msg = "Token expired" } ! []
+
+        Jwt.TokenNotExpired ->
+            { model | msg = "Insufficient priviledges" } ! []
+
+        Jwt.HttpError err ->
+            { model | msg = getPhoenixError err } ! []
+
+        _ ->
+            { model | msg = toString jwtErr } ! []
 
 
 getPhoenixError : Http.Error -> String
@@ -127,10 +159,11 @@ getPhoenixError error =
             let
                 decodedError =
                     response.body
-                        |> Json.decodeString (Json.map toString <| field "errors" Json.value)
+                        |> Json.decodeString (Json.map toString errorDecoder)
             in
                 case decodedError of
                     Result.Ok errorMsg ->
+                        -- response.status.message ++ ": " ++ errorMsg
                         errorMsg
 
                     Result.Err _ ->
@@ -138,6 +171,10 @@ getPhoenixError error =
 
         _ ->
             toString error
+
+
+errorDecoder =
+    field "errors" Json.value
 
 
 
@@ -153,7 +190,7 @@ view model =
         , div
             [ class "row" ]
             [ Html.form
-                [ onSubmit Submit
+                [ onSubmit Login
                 , class "col-xs-12"
                 ]
                 [ div []
@@ -186,7 +223,7 @@ view model =
                         [ type_ "submit"
                         , class "btn btn-default"
                         ]
-                        [ text "Submit" ]
+                        [ text "Login" ]
                     ]
                 ]
             ]
@@ -208,9 +245,14 @@ view model =
                             [ text "Try token" ]
                         , button
                             [ class "btn btn-warning"
-                            , onClick TryWithInvalidToken
+                            , onClick TryInvalidToken
                             ]
-                            [ text "Try bad token" ]
+                            [ text "Try invalid token" ]
+                        , button
+                            [ class "btn btn-warning"
+                            , onClick TryErrorRoute
+                            ]
+                            [ text "Try api route with error" ]
                         , p [] [ text "Wait 30 seconds and try again too" ]
                         ]
         , p
@@ -229,16 +271,17 @@ submitCredentials model =
         [ ( "username", E.string model.uname )
         , ( "password", E.string model.pword )
         ]
-        |> authenticate Auth authUrl tokenStringDecoder
+        |> authenticate authUrl tokenStringDecoder
+        |> Http.send Auth
 
 
 tryToken : String -> Cmd Msg
 tryToken token =
-    Jwt.get_ token "/api/data" dataDecoder
-        |> Task.perform GetResult
+    Jwt.get token "/api/data" dataDecoder
+        |> Jwt.sendCheckExpired token GetResult
 
 
-tryWithInvalidToken : Cmd Msg
-tryWithInvalidToken =
-    Jwt.get_ "invalidToken" "/api/data" dataDecoder
-        |> Task.perform InvalidTokenResult
+tryErrorRoute : String -> Cmd Msg
+tryErrorRoute token =
+    Jwt.get token "/api/data_error" dataDecoder
+        |> Jwt.send ErrorRouteResult

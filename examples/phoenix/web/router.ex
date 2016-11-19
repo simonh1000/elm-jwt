@@ -27,6 +27,7 @@ defmodule JwtExample.Router do
     pipe_through [ :api, :api_auth ]
 
     get "/data", DataController, :index
+    get "/data_error", DataController, :index_error
 
     resources "/users", UserController, except: [:new, :edit]
   end

@@ -1,38 +1,42 @@
 module Decoders exposing (..)
 
-import Json.Decode as Json exposing ( field, Value )
+import Json.Decode as Json exposing (map4, oneOf, field, int, string, Value)
+
 
 type alias JwtToken =
-    { id: String
+    { id : String
     , username : String
     , iat : Int
     , expiry : Int
     }
 
+
 tokenStringDecoder =
-  field "token" Json.string
+    field "token" string
+
 
 dataDecoder =
-  field "data" Json.string
+    field "data" string
+
 
 tokenDecoder =
-    Json.oneOf
+    oneOf
         [ nodeDecoder
         , phoenixDecoder
         ]
 
-nodeDecoder =
-    Json.map4 JwtToken
-        (field "id" Json.string)
-        (field "username" Json.string)
-        (field "iat" Json.int)
-        (field "exp" Json.int)
 
--- PHOENIX
+nodeDecoder =
+    map4 JwtToken
+        (field "id" string)
+        (field "username" string)
+        (field "iat" int)
+        (field "exp" int)
+
 
 phoenixDecoder =
-    Json.map4 JwtToken
-        (field "aud" Json.string)
-        (field "aud" Json.string)
-        (field "iat" Json.int)
-        (field "exp" Json.int)
+    map4 JwtToken
+        (field "aud" string)
+        (field "aud" string)
+        (field "iat" int)
+        (field "exp" int)

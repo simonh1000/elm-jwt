@@ -1,3 +1,5 @@
+@import '../../node_modules/bootstrap/scss/bootstrap';
+
 body {
     background-color: rgb(210, 246, 188);
     font-family: sans-serif;
@@ -5,4 +7,8 @@ body {
 
 h1 {
     color: rgb(13, 69, 79);
+}
+
+button {
+    margin-right: 15px;
 }
