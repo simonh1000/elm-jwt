@@ -1,6 +1,6 @@
 # Elm helpers for working with Jwt tokens.
 
-A collection of Elm Http and Json decoder functions to support Jwt authentication.
+A collection of functions to decode Jwt tokens, and to use them for authenticated CRUD requests.
 
 ## Version 4.0.0 (Elm 0.18)
 
