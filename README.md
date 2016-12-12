@@ -4,7 +4,7 @@ A collection of functions to decode Jwt tokens, and to use them for authenticate
 
 ## Version 4.0.0 (Elm 0.18)
 
-Elm's Http library has undergone a major rewrite for 0.18 and this library depends upon it. As a result much has changed and you are encouraged to re-look at the examples and the docs.
+Elm's Http library has undergone a major rewrite for 0.18 and this library depends upon it. As a result much has changed and you are encouraged to re-look at the examples and the [docs](http://package.elm-lang.org/packages/simonh1000/elm-jwt/latest/Jwt).
 
 ## Version 3.0.0 (Elm 0.18)
 
