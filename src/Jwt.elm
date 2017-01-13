@@ -162,7 +162,7 @@ fixlength s =
             [ ("username", E.string model.uname)
             , ("password", E.string model.pword)
             ]
-        |> authenticateRequest "/sessions" tokenStringDecoder
+        |> authenticate "/sessions" tokenStringDecoder
 -}
 authenticate : String -> Json.Decoder a -> Value -> Request a
 authenticate url dec credentials =
