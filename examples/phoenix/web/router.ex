@@ -26,7 +26,7 @@ defmodule JwtExample.Router do
     # The api stack requires Authentication.
     pipe_through [ :api, :api_auth ]
 
-    get "/data", DataController, :index
+    resources "/data", DataController, only: [:index, :update]
     get "/data_error", DataController, :index_error
 
     resources "/users", UserController, except: [:new, :edit]

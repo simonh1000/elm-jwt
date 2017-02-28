@@ -28,6 +28,11 @@ defmodule JwtExample.DataController do
       |> render(JwtExample.ChangesetView, "error.json", changeset: error_changeset)
   end
 
+  def update(conn, _params) do
+      conn
+        |> send_resp(201, "")
+  end
+
   def unauthenticated(conn, _params) do
       conn
       |> put_status(401)

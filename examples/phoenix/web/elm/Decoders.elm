@@ -1,6 +1,6 @@
 module Decoders exposing (..)
 
-import Json.Decode as Json exposing (map4, oneOf, field, int, string, Value)
+import Json.Decode as Json exposing (Decoder, Value, field, int, map4, oneOf, string, succeed)
 
 
 type alias JwtToken =
@@ -15,8 +15,14 @@ tokenStringDecoder =
     field "token" string
 
 
+dataDecoder : Decoder String
 dataDecoder =
     field "data" string
+
+
+data2Decoder : Decoder String
+data2Decoder =
+    succeed "success"
 
 
 tokenDecoder =

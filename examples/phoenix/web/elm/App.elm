@@ -48,18 +48,20 @@ type
     | TryToken
     | TryInvalidToken
     | TryErrorRoute
+    | TryRouteWithNoJsonResponse
       -- Component messages
     | FormInput Field String
       -- Cmd results
-    | Auth (Result Http.Error String)
+    | LoginResult (Result Http.Error String)
     | GetResult (Result JwtError String)
+    | NonJsonResponse (Result JwtError String)
     | ErrorRouteResult (Result JwtError String)
     | ServerFail_ JwtError
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
-    case message of
+    case Debug.log "update" message of
         FormInput inputId val ->
             case inputId of
                 Uname ->
@@ -88,18 +90,33 @@ update message model =
                 |> Maybe.withDefault Cmd.none
             )
 
-        Auth res ->
+        TryRouteWithNoJsonResponse ->
+            ( { model | msg = "Contacting server..." }
+            , model.token
+                |> Maybe.map tryUpdateRoute
+                |> Maybe.withDefault Cmd.none
+            )
+
+        LoginResult res ->
             case res of
-                Result.Ok token ->
+                Ok token ->
                     { model | token = Just token, msg = "" } ! []
 
-                Result.Err err ->
+                Err err ->
                     { model | msg = getPhoenixError err } ! []
 
         GetResult res ->
             case res of
                 Ok msg ->
                     { model | msg = msg } ! []
+
+                Err jwtErr ->
+                    failHandler_ ServerFail_ jwtErr model
+
+        NonJsonResponse res ->
+            case res of
+                Ok r ->
+                    { model | msg = "Received success response" } ! []
 
                 Err jwtErr ->
                     failHandler_ ServerFail_ jwtErr model
@@ -127,7 +144,7 @@ failHandler_ msgCreator jwtErr model =
 
 
 
--- We recurse at most once because Jwt.checkTokenExpirey cannot return Jwt.Unauthorized
+-- We recurse at most once because Jwt.checkTokenExpiry cannot return Jwt.Unauthorized
 
 
 failHandler : (JwtError -> msg) -> String -> JwtError -> { model | msg : String } -> ( { model | msg : String }, Cmd msg )
@@ -135,7 +152,7 @@ failHandler msgCreator token jwtErr model =
     case jwtErr of
         Jwt.Unauthorized ->
             ( { model | msg = "Unauthorized" }
-            , Jwt.checkTokenExpirey token
+            , Jwt.checkTokenExpiry token
                 |> Task.perform msgCreator
             )
 
@@ -174,7 +191,7 @@ getPhoenixError error =
 
 
 errorDecoder =
-    field "errors" Json.value
+    field "error" Json.value
 
 
 
@@ -252,7 +269,12 @@ view model =
                             [ class "btn btn-warning"
                             , onClick TryErrorRoute
                             ]
-                            [ text "Try api route with error" ]
+                            [ text "Try route with Error" ]
+                        , button
+                            [ class "btn btn-primary"
+                            , onClick TryRouteWithNoJsonResponse
+                            ]
+                            [ text "Try api route that returns no json" ]
                         , p [] [ text "Wait 30 seconds and try again too" ]
                         ]
         , p
@@ -272,7 +294,7 @@ submitCredentials model =
         , ( "password", E.string model.pword )
         ]
         |> authenticate authUrl tokenStringDecoder
-        |> Http.send Auth
+        |> Http.send LoginResult
 
 
 tryToken : String -> Cmd Msg
@@ -285,3 +307,25 @@ tryErrorRoute : String -> Cmd Msg
 tryErrorRoute token =
     Jwt.get token "/api/data_error" dataDecoder
         |> Jwt.send ErrorRouteResult
+
+
+tryUpdateRoute : String -> Cmd Msg
+tryUpdateRoute token =
+    let
+        req =
+            Jwt.createRequestObject "PUT" token "/api/data/1" Http.emptyBody (Json.succeed "")
+    in
+        { req | expect = Http.expectString }
+            |> Http.request
+            |> Jwt.send NonJsonResponse
+
+
+getWithNoResponse : String -> Cmd Msg
+getWithNoResponse token =
+    let
+        req =
+            Jwt.createRequestObject "GET" token "/api/data_error" Http.emptyBody (Json.succeed "")
+    in
+        { req | expect = Http.expectString }
+            |> Http.request
+            |> Jwt.send ErrorRouteResult

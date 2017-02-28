@@ -53,7 +53,7 @@ gulp.task('compilation', ['html', 'sass']);
          console.log(err.message);
      }
      return gulp.src(paths.elmMain)             // "./src/Main.elm"
-         .pipe(elm())
+         .pipe(elm({debug: true}))
          .on('error', onErrorHandler)
 		//  .pipe( gulpif(production, uglify()) )   // uglify
          .pipe(gulp.dest(paths.dist + "/js"));
