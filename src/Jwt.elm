@@ -131,7 +131,7 @@ getTokenBody token =
         processor =
             unurl >> String.split "." >> List.map fixlength
     in
-        case Debug.log "" (processor token) of
+        case processor token of
             _ :: (Result.Err e) :: _ :: [] ->
                 Result.Err e
 
@@ -310,7 +310,7 @@ sendCheckExpired token msgCreator request =
 -}
 handleError : String -> Http.Error -> Task Never JwtError
 handleError token err =
-    case promote401 (Debug.log "" err) of
+    case promote401 err of
         Unauthorized ->
             checkTokenExpiry token
 
