@@ -15,6 +15,7 @@ module Jwt
         , promote401
         , handleError
         , checkTokenExpiry
+        , tokenDecoder
         )
 
 {-| Helper functions for working with Jwt tokens and authenticated CRUD APIs.
@@ -22,17 +23,26 @@ module Jwt
 This package provides functions for reading tokens, and for using them to make
 authenticated Http requests.
 
+
 # Token reading
-@docs decodeToken, isExpired, checkTokenExpiry
+
+@docs decodeToken, tokenDecoder, isExpired, checkTokenExpiry
+
 
 # Authenticated Http requests
+
 @docs createRequest, createRequestObject, send, sendCheckExpired, get, post, put, delete
 
+
 # Error handlers
+
 @docs JwtError, promote401, handleError
 
+
 # Logging in
+
 @docs authenticate
+
 -}
 
 import Http exposing (request, send, emptyBody, header, expectJson, jsonBody, toTask, Request)
@@ -41,13 +51,17 @@ import Base64
 import String
 import Time exposing (Time)
 import Json.Decode as Json exposing (field, Value)
+import Jwt.Decoders
 
 
 {-| The following errors are modeled
- - Any Http.Error, other than a 401
- - 401 (Unauthorized), due either to token expiry or e.g. inadequate permissions
- - issues with processing (e.g. base 64 decoding) the token, and
- - problems decoding the json data within the content of the token
+
+  - Any Http.Error, other than a 401
+  - 401 (Unauthorized), due either to token expiry or e.g. inadequate permissions
+  - token (non-)expiry information
+  - issues with processing (e.g. base 64 decoding) the token, and
+  - problems decoding the json data within the content of the token
+
 -}
 type JwtError
     = HttpError Http.Error
@@ -67,12 +81,44 @@ type JwtError
     decodeToken dec token
 
 In the event of success, `decodeToken` returns an Elm record structure using the JSON Decoder.
+
 -}
 decodeToken : Json.Decoder a -> String -> Result JwtError a
 decodeToken dec =
     getTokenBody
         >> Result.andThen (Base64.decode >> Result.mapError TokenDecodeError)
         >> Result.andThen (Json.decodeString dec >> Result.mapError TokenDecodeError)
+
+
+{-| All the token parsing goodness in the form of a Json Decoder
+
+    -- decode token from Firebase
+    let firebaseToken =
+        decodeString
+            (tokenDecoder Jwt.Decoders.firebase)
+            tokenString
+
+-}
+tokenDecoder : Json.Decoder a -> Json.Decoder a
+tokenDecoder inner =
+    Json.string
+        |> Json.andThen
+            (\tokenStr ->
+                let
+                    transformedToken =
+                        getTokenBody tokenStr
+                            |> Result.mapError toString
+                            |> Result.andThen Base64.decode
+                            |> Result.mapError ((++) "base64 error: ")
+                            |> Result.andThen (Json.decodeString inner)
+                in
+                    case transformedToken of
+                        Ok val ->
+                            Json.succeed val
+
+                        Err err ->
+                            Json.fail err
+            )
 
 
 
@@ -129,7 +175,7 @@ fixlength s =
             Result.Err <| TokenProcessingError "Wrong length"
 
 
-{-| Checks a token for Expiry.
+{-| Checks a token for Expiry. Returns expiry or any errors that occurred in decoding.
 -}
 checkTokenExpiry : String -> Task Never JwtError
 checkTokenExpiry token =
@@ -178,7 +224,7 @@ createRequest method token url body =
 
 {-| createRequestObject creates the data structure expected by Http.Request.
 It is broken out here so that users can change the expect part in the event that
-one of the REST apis does not return Json.
+one of their REST apis does not return Json.
 -}
 createRequestObject : String -> String -> String -> Http.Body -> Json.Decoder a -> { method : String, headers : List Http.Header, url : String, body : Http.Body, expect : Http.Expect a, timeout : Maybe Time, withCredentials : Bool }
 createRequestObject method token url body dec =
@@ -199,6 +245,7 @@ attached to the headers.
     getData token =
         Jwt.get token "/api/data" dataDecoder
             |> Jwt.send DataResult
+
 -}
 get : String -> String -> Json.Decoder a -> Request a
 get token url dec =
@@ -214,20 +261,21 @@ attached to the headers.
     postContent token dec value url =
         Jwt.post token url (Http.jsonBody value) (phoenixDecoder dec)
             |> Jwt.send ContentResult
+
 -}
 post : String -> String -> Http.Body -> Json.Decoder a -> Request a
 post =
     createRequest "POST"
 
 
-{-| `put` returns a PUT Http.Request with the token attached to the headers.
+{-| Create a PUT request with a token attached to the Authorization header
 -}
 put : String -> String -> Http.Body -> Json.Decoder a -> Request a
 put =
     createRequest "PUT"
 
 
-{-| `delete` returns a DELETE Http.Request with the token attached to the headers.
+{-| returns a `DELETE` Http.Request with the token attached to the headers.
 -}
 delete : String -> String -> Json.Decoder a -> Request a
 delete token url dec =
@@ -258,7 +306,7 @@ sendCheckExpired token msgCreator request =
         |> Task.perform msgCreator
 
 
-{-| Takes an Http.Error. If it is a 401 then it checks for token expiry.
+{-| Takes an Http.Error. If it is a 401, then it checks the token for expiry.
 -}
 handleError : String -> Http.Error -> Task Never JwtError
 handleError token err =
@@ -276,9 +324,10 @@ when that is the case.
     getAuth : String -> String -> Json.Decoder a -> Task Never (Result JwtError a)
     getAuth token url dec =
         createRequest "GET" token url Http.emptyBody dec
-        |> toTask
-        |> Task.map Result.Ok
-        |> Task.onError (promote401 token)
+            |> toTask
+            |> Task.map Result.Ok
+            |> Task.onError (promote401 token)
+
 -}
 promote401 : Http.Error -> JwtError
 promote401 err =
@@ -301,14 +350,16 @@ promote401 err =
 
 
 {-| `authenticate` creates an Http.Request based on login credentials.
+There is very little to this function (and it will be removed in future releases), so feel free to role your own here instead.
 
     submitCredentials : Model -> Cmd Msg
     submitCredentials model =
         E.object
-            [ ("username", E.string model.uname)
-            , ("password", E.string model.pword)
+            [ ( "username", E.string model.uname )
+            , ( "password", E.string model.pword )
             ]
-        |> authenticate "/sessions" tokenStringDecoder
+            |> authenticate "/sessions" tokenStringDecoder
+
 -}
 authenticate : String -> Json.Decoder a -> Value -> Request a
 authenticate url dec credentials =
