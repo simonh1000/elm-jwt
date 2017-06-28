@@ -15,7 +15,7 @@ authenticated Http requests.
 import Json.Decode as Json exposing (field, Value, Decoder)
 
 
-{-| Generic constructor for commonly founf fields in a Jwt token
+{-| Generic constructor for commonly found fields in a Jwt token
 -}
 type alias JwtToken =
     { iat : Int
