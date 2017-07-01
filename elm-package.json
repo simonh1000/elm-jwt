@@ -1,6 +1,6 @@
 {
-    "version": "5.2.0",
-    "summary": "Jwt token helper functions",
+    "version": "5.2.1",
+    "summary": "Supports decoding Jwt tokens & making authenticated HTTP requests",
     "repository": "https://github.com/simonh1000/elm-jwt.git",
     "license": "BSD3",
     "source-directories": [

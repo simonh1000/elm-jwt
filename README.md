@@ -1,6 +1,6 @@
 # Elm helpers for working with Jwt tokens.
 
-A collection of functions to decode Jwt tokens, and to use them for authenticated CRUD requests.
+A collection of functions to decode [Jwt tokens](https://jwt.io/), and to use them for authenticated CRUD requests.
 
 ## Decode a token
 

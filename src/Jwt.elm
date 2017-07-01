@@ -225,6 +225,11 @@ createRequest method token url body =
 {-| createRequestObject creates the data structure expected by Http.Request.
 It is broken out here so that users can change the expect part in the event that
 one of their REST apis does not return Json.
+
+In my experience, the Authorization header is NOT case sensitive. Do raise an issue if you experience otherwise.
+
+See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/withCredentials) for more on withCredentials. The default is False.
+
 -}
 createRequestObject : String -> String -> String -> Http.Body -> Json.Decoder a -> { method : String, headers : List Http.Header, url : String, body : Http.Body, expect : Http.Expect a, timeout : Maybe Time, withCredentials : Bool }
 createRequestObject method token url body dec =
@@ -234,7 +239,7 @@ createRequestObject method token url body dec =
     , body = body
     , expect = expectJson dec
     , timeout = Nothing
-    , withCredentials = True
+    , withCredentials = False
     }
 
 
