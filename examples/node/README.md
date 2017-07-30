@@ -1,21 +1,12 @@
-# Elm - Fullstack starter package
-
-**Elm** fullstack starter package with Jade, Sass, Browser-sync and an Express backend.
+# Elm-JWT - Node JS example
 
 To use, install and run...:
 
 ```
-git clone https://github.com/simonh1000/elm-fullstack-starter
 npm install
-elm-package install
-
-npm start       // == gulp
-npm production  // == gulp build
+npm start
 ```
 
-Client side files are compiled into, and served from, './dist'.
+The commands above should open the browser at http://localhost:3000/
 
-To compile for production use `gulp build`.
-
-## ToDo
- - Elm debug (when available)
+Uses my [Gulp build environment](https://github.com/simonh1000/elm-fullstack-starter)

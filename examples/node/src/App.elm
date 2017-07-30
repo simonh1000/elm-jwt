@@ -11,6 +11,7 @@ import Jwt exposing (..)
 import Decoders exposing (..)
 
 
+authUrl : String
 authUrl =
     "/sessions"
 
@@ -135,7 +136,7 @@ failHandler msgCreator token jwtErr model =
     case jwtErr of
         Jwt.Unauthorized ->
             ( { model | msg = "Unauthorized" }
-            , Jwt.checkTokenExpirey token
+            , Jwt.checkTokenExpiry token
                 |> Task.perform msgCreator
             )
 
@@ -173,6 +174,7 @@ getPhoenixError error =
             toString error
 
 
+errorDecoder : Json.Decoder Json.Value
 errorDecoder =
     field "errors" Json.value
 
@@ -234,7 +236,7 @@ view model =
             Just tokenString ->
                 let
                     token =
-                        decodeToken tokenDecoder tokenString
+                        decodeToken Decoders.tokenDecoder tokenString
                 in
                     div []
                         [ p [] [ text <| toString token ]
