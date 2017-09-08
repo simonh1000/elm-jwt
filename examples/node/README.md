@@ -1,12 +1,26 @@
-# Elm-JWT - Node JS example
+# Elm JWT Node example
 
-To use, install and run...:
+## Installation
 
+Clone this repo into a new project folder and run install script.
+(I ignore the errors about missing jquery as it is best not to use the Bootstrap jquery-based components with Elm)
+
+With npm
+
+```sh
+$ npm install
+$ npm run server
+<in another window>
+$ npm run dev
 ```
-npm install
-npm start
-```
 
-The commands above should open the browser at http://localhost:3000/
+With yarn
+```sh
+$ yarn install
+$ yarn server
+<in another window>
+$ yarn dev
+ ```
 
-Uses my [Gulp build environment](https://github.com/simonh1000/elm-fullstack-starter)
+Open http://localhost:3000 and start modifying the code in /src.
+(An example using Routing is provided in the `navigation` branch)

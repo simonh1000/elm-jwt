@@ -198,9 +198,7 @@ view model =
                 [ div []
                     [ div
                         [ class "form-group" ]
-                        [ label
-                            [ for "uname" ]
-                            [ text "Username" ]
+                        [ label [ for "uname" ] [ text "Username" ]
                         , input
                             -- [ on "input" (Json.map (Input Uname) targetValue) (Signal.message address)
                             [ onInput (FormInput Uname)
@@ -211,9 +209,7 @@ view model =
                         ]
                     , div
                         [ class "form-group" ]
-                        [ label
-                            [ for "pword" ]
-                            [ text "Password" ]
+                        [ label [ for "pword" ] [ text "Password" ]
                         , input
                             [ onInput (FormInput Pword)
                             , class "form-control"
@@ -240,27 +236,24 @@ view model =
                 in
                     div []
                         [ p [] [ text <| toString token ]
-                        , button
-                            [ class "btn btn-primary"
-                            , onClick TryToken
-                            ]
-                            [ text "Try token" ]
-                        , button
-                            [ class "btn btn-warning"
-                            , onClick TryInvalidToken
-                            ]
-                            [ text "Try invalid token" ]
-                        , button
-                            [ class "btn btn-warning"
-                            , onClick TryErrorRoute
-                            ]
-                            [ text "Try api route with error" ]
+                        , mkButton TryToken "Try token"
+                        , mkButton TryInvalidToken "Try invalid token"
+                        , mkButton TryErrorRoute "Try api route with error"
                         , p [] [ text "Wait 30 seconds and try again too" ]
                         ]
         , p
             [ style [ ( "color", "red" ) ] ]
             [ text model.msg ]
         ]
+
+
+mkButton : msg -> String -> Html msg
+mkButton msg str =
+    button
+        [ class "btn btn-warning"
+        , onClick msg
+        ]
+        [ text str ]
 
 
 

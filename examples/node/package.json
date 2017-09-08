@@ -1,46 +1,59 @@
 {
   "author": "Simon Hampton",
-  "name": "elm-fullstack-starter",
-  "version": "1.1.0",
-  "description": "Elm fullstack starter",
-  "license": "ISC",
-  "repository": "https://github.com/simonh1000/elm-fullstack-starter",
+  "name": "elm-jwt",
+  "version": "5.1.2",
+  "description": "Elm JWT",
+  "main": "index.js",
   "scripts": {
-    "start": "gulp",
-    "production": "gulp build",
-    "postinstall": "elm-package install -y"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "webpack-dev-server --hot --port 3000",
+    "build": "webpack",
+    "prod": "webpack -p",
+    "postinstall": "elm-package install -y",
+    "server": "server/bin/www"
   },
-  "engines": {
-    "node": ">=4.x"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/simonh1000/elm-webpack-starter.git"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "babel-core": "^6.25.0",
+    "babel-loader": "^7.1.1",
+    "babel-preset-env": "^1.6.0",
+    "bootstrap-loader": "^2.2.0",
+    "chokidar-cli": "^1.2.0",
+    "copy-webpack-plugin": "^4.0.1",
+    "css-loader": "^0.28.4",
+    "elm-hot-loader": "^0.5.4",
+    "elm-webpack-loader": "^4.3.1",
+    "extract-text-webpack-plugin": "^3.0.0",
+    "file-loader": "^0.11.2",
+    "html-webpack-plugin": "^2.30.1",
+    "node-sass": "^4.5.3",
+    "postcss-loader": "^2.0.6",
+    "resolve-url-loader": "^2.1.0",
+    "sass-loader": "^6.0.6",
+    "style-loader": "^0.18.2",
+    "url-loader": "^0.5.9",
+    "webpack": "^3.5.3",
+    "webpack-dev-server": "^2.7.1",
+    "webpack-merge": "^4.1.0"
   },
   "dependencies": {
     "body-parser": "~1.13.2",
-    "bootstrap": "^4.0.0-alpha.5",
+    "bootstrap": "^4.0.0-beta",
+    "clean-webpack-plugin": "^0.1.16",
     "cookie-parser": "~1.3.5",
     "cors": "^2.7.1",
     "debug": "~2.2.0",
     "express": "~4.13.1",
+    "jade": "^1.11.0",
     "jsonwebtoken": "^5.5.4",
+    "loglevel": "^1.4.1",
     "morgan": "~1.6.1",
     "passport": "^0.3.2",
     "passport-local": "^1.0.0",
     "serve-favicon": "~2.3.0"
-  },
-  "devDependencies": {
-    "gulp-elm": "^0.2.0",
-    "jade": "~1.11.0",
-    "browser-sync": "^2.9.3",
-    "del": "^2.2.0",
-    "gulp": "^3.9.0",
-    "gulp-clean": "^0.3.1",
-    "gulp-concat": "^2.6.0",
-    "gulp-if": "^2.0.0",
-    "gulp-jade": "^1.1.0",
-    "gulp-minify-css": "^1.2.2",
-    "gulp-nodemon": "^2.0.4",
-    "gulp-sass": "^2.0.4",
-    "gulp-sourcemaps": "^1.5.2",
-    "gulp-uglify": "^1.5.1",
-    "run-sequence": "^1.1.5"
   }
 }
