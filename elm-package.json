@@ -1,11 +1,15 @@
 {
-    "version": "5.2.1",
-    "summary":
-        "Supports decoding Jwt tokens & making authenticated HTTP requests",
+    "version": "5.2.2",
+    "summary": "Supports decoding Jwt tokens & making authenticated HTTP requests",
     "repository": "https://github.com/simonh1000/elm-jwt.git",
     "license": "BSD3",
-    "source-directories": ["src"],
-    "exposed-modules": ["Jwt", "Jwt.Decoders"],
+    "source-directories": [
+        "src"
+    ],
+    "exposed-modules": [
+        "Jwt",
+        "Jwt.Decoders"
+    ],
     "dependencies": {
         "elm-lang/core": "5.0.0 <= v < 6.0.0",
         "elm-lang/http": "1.0.0 <= v < 2.0.0",
