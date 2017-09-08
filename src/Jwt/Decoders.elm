@@ -12,7 +12,7 @@ authenticated Http requests.
 
 -}
 
-import Json.Decode as Json exposing (field, Value, Decoder)
+import Json.Decode as Json exposing (Decoder, Value, field)
 
 
 {-| Generic constructor for commonly found fields in a Jwt token

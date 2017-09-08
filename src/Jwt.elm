@@ -1,20 +1,20 @@
 module Jwt
     exposing
         ( JwtError(..)
-        , decodeToken
-        , isExpired
+        , authenticate
+        , checkTokenExpiry
         , createRequest
         , createRequestObject
-        , authenticate
+        , decodeToken
+        , delete
+        , get
+        , handleError
+        , isExpired
+        , post
+        , promote401
+        , put
         , send
         , sendCheckExpired
-        , get
-        , post
-        , put
-        , delete
-        , promote401
-        , handleError
-        , checkTokenExpiry
         , tokenDecoder
         )
 
@@ -45,13 +45,13 @@ authenticated Http requests.
 
 -}
 
-import Http exposing (request, send, emptyBody, header, expectJson, jsonBody, toTask, Request)
-import Task exposing (Task)
 import Base64
-import String
-import Time exposing (Time)
-import Json.Decode as Json exposing (field, Value)
+import Http exposing (Request, emptyBody, expectJson, header, jsonBody, request, send, toTask)
+import Json.Decode as Json exposing (Value, field)
 import Jwt.Decoders
+import String
+import Task exposing (Task)
+import Time exposing (Time)
 
 
 {-| The following errors are modeled
@@ -112,12 +112,12 @@ tokenDecoder inner =
                             |> Result.mapError ((++) "base64 error: ")
                             |> Result.andThen (Json.decodeString inner)
                 in
-                    case transformedToken of
-                        Ok val ->
-                            Json.succeed val
+                case transformedToken of
+                    Ok val ->
+                        Json.succeed val
 
-                        Err err ->
-                            Json.fail err
+                    Err err ->
+                        Json.fail err
             )
 
 
@@ -131,15 +131,15 @@ getTokenBody token =
         processor =
             unurl >> String.split "." >> List.map fixlength
     in
-        case processor token of
-            _ :: (Result.Err e) :: _ :: [] ->
-                Result.Err e
+    case processor token of
+        _ :: (Result.Err e) :: _ :: [] ->
+            Result.Err e
 
-            _ :: (Result.Ok encBody) :: _ :: [] ->
-                Result.Ok encBody
+        _ :: (Result.Ok encBody) :: _ :: [] ->
+            Result.Ok encBody
 
-            _ ->
-                Result.Err <| TokenProcessingError "Token has invalid shape"
+        _ ->
+            Result.Err <| TokenProcessingError "Token has invalid shape"
 
 
 unurl : String -> String
@@ -156,7 +156,7 @@ unurl =
                 c ->
                     c
     in
-        String.map fix
+    String.map fix
 
 
 fixlength : String -> Result JwtError String
@@ -296,7 +296,7 @@ send msgCreator req =
         conv fn =
             fn << Result.mapError promote401
     in
-        Http.send (conv msgCreator) req
+    Http.send (conv msgCreator) req
 
 
 {-| `sendCheckExpired` is similar to `send` but, on receiving a 401, it carries out a further check to
