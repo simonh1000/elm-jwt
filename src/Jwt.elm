@@ -46,9 +46,8 @@ authenticated Http requests.
 -}
 
 import Base64
-import Http exposing (Request, emptyBody, expectJson, header, jsonBody, request, send, toTask)
+import Http exposing (Request, expectJson, header, jsonBody, request, toTask)
 import Json.Decode as Json exposing (Value, field)
-import Jwt.Decoders
 import String
 import Task exposing (Task)
 import Time exposing (Time)
@@ -112,12 +111,12 @@ tokenDecoder inner =
                             |> Result.mapError ((++) "base64 error: ")
                             |> Result.andThen (Json.decodeString inner)
                 in
-                case transformedToken of
-                    Ok val ->
-                        Json.succeed val
+                    case transformedToken of
+                        Ok val ->
+                            Json.succeed val
 
-                    Err err ->
-                        Json.fail err
+                        Err err ->
+                            Json.fail err
             )
 
 
@@ -131,15 +130,15 @@ getTokenBody token =
         processor =
             unurl >> String.split "." >> List.map fixlength
     in
-    case processor token of
-        _ :: (Result.Err e) :: _ :: [] ->
-            Result.Err e
+        case processor token of
+            _ :: (Result.Err e) :: _ :: [] ->
+                Result.Err e
 
-        _ :: (Result.Ok encBody) :: _ :: [] ->
-            Result.Ok encBody
+            _ :: (Result.Ok encBody) :: _ :: [] ->
+                Result.Ok encBody
 
-        _ ->
-            Result.Err <| TokenProcessingError "Token has invalid shape"
+            _ ->
+                Result.Err <| TokenProcessingError "Token has invalid shape"
 
 
 unurl : String -> String
@@ -153,10 +152,10 @@ unurl =
                 '_' ->
                     '/'
 
-                c ->
+                _ ->
                     c
     in
-    String.map fix
+        String.map fix
 
 
 fixlength : String -> Result JwtError String
@@ -231,7 +230,13 @@ In my experience, the Authorization header is NOT case sensitive. Do raise an is
 See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/withCredentials) for more on withCredentials. The default is False.
 
 -}
-createRequestObject : String -> String -> String -> Http.Body -> Json.Decoder a -> { method : String, headers : List Http.Header, url : String, body : Http.Body, expect : Http.Expect a, timeout : Maybe Time, withCredentials : Bool }
+createRequestObject :
+    String
+    -> String
+    -> String
+    -> Http.Body
+    -> Json.Decoder a
+    -> { method : String, headers : List Http.Header, url : String, body : Http.Body, expect : Http.Expect a, timeout : Maybe Time, withCredentials : Bool }
 createRequestObject method token url body dec =
     { method = method
     , headers = [ header "Authorization" ("Bearer " ++ token) ]
@@ -296,15 +301,15 @@ send msgCreator req =
         conv fn =
             fn << Result.mapError promote401
     in
-    Http.send (conv msgCreator) req
+        Http.send (conv msgCreator) req
 
 
 {-| `sendCheckExpired` is similar to `send` but, on receiving a 401, it carries out a further check to
 determine whether the token has expired.
 -}
 sendCheckExpired : String -> (Result JwtError a -> msg) -> Request a -> Cmd msg
-sendCheckExpired token msgCreator request =
-    request
+sendCheckExpired token msgCreator req =
+    req
         |> toTask
         |> Task.map Result.Ok
         |> Task.onError (Task.map Err << handleError token)

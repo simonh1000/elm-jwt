@@ -1,4 +1,4 @@
-module Jwt.Decoders exposing (JwtToken, firebase)
+module Jwt.Decoders exposing (JwtToken, firebase, phoenixGuardian)
 
 {-| Helper functions for working with Jwt tokens and authenticated CRUD APIs.
 
@@ -12,7 +12,7 @@ authenticated Http requests.
 
 -}
 
-import Json.Decode as Json exposing (Decoder, Value, field)
+import Json.Decode as Json exposing (Decoder, field)
 
 
 {-| Generic constructor for commonly found fields in a Jwt token
