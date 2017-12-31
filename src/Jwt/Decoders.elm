@@ -8,7 +8,7 @@ authenticated Http requests.
 
 # Decoders for popular Jwt tokens
 
-@docs JwtToken, firebase
+@docs JwtToken, firebase, phoenixGuardian
 
 -}
 
@@ -25,11 +25,6 @@ type alias JwtToken =
     }
 
 
-andMap : Decoder a -> Decoder (a -> b) -> Decoder b
-andMap =
-    Json.map2 (|>)
-
-
 {-| Decoder for Firebase Jwt
 -}
 firebase : Decoder JwtToken
@@ -41,6 +36,9 @@ firebase =
         |> andMap (Json.maybe <| field "email" Json.string)
 
 
+{-| Decoder for Guardian
+<https://github.com/ueberauth/guardian>
+-}
 phoenixGuardian : Decoder JwtToken
 phoenixGuardian =
     Json.succeed JwtToken
@@ -48,3 +46,12 @@ phoenixGuardian =
         |> andMap (field "exp" Json.int)
         |> andMap (Json.succeed Nothing)
         |> andMap (Json.succeed Nothing)
+
+
+
+-- Helpers
+
+
+andMap : Decoder a -> Decoder (a -> b) -> Decoder b
+andMap =
+    Json.map2 (|>)
