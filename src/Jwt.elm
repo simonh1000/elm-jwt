@@ -1,7 +1,6 @@
 module Jwt
     exposing
         ( JwtError(..)
-        , authenticate
         , checkTokenExpiry
         , createRequest
         , createRequestObject
@@ -47,7 +46,7 @@ authenticated Http requests.
 
 import Base64
 import Http exposing (Request, expectJson, header, jsonBody, request, toTask)
-import Json.Decode as Json exposing (Decoder, Value, field)
+import Json.Decode exposing (Decoder, Value, field)
 import String
 import Task exposing (Task)
 import Time exposing (Posix)
@@ -68,7 +67,7 @@ type JwtError
     | TokenExpired
     | TokenNotExpired
     | TokenProcessingError String
-    | TokenDecodeError Json.Error
+    | TokenDecodeError Json.Decode.Error
 
 
 
@@ -86,7 +85,7 @@ decodeToken : Decoder a -> String -> Result JwtError a
 decodeToken dec =
     getTokenBody
         >> Result.andThen (Base64.decode >> Result.mapError TokenProcessingError)
-        >> Result.andThen (Json.decodeString dec >> Result.mapError TokenDecodeError)
+        >> Result.andThen (Json.Decode.decodeString dec >> Result.mapError TokenDecodeError)
 
 
 {-| All the token parsing goodness in the form of a Json Decoder
@@ -100,21 +99,21 @@ decodeToken dec =
 -}
 tokenDecoder : Decoder a -> Decoder a
 tokenDecoder inner =
-    Json.string
-        |> Json.andThen
+    Json.Decode.string
+        |> Json.Decode.andThen
             (\tokenStr ->
                 let
                     transformedToken =
                         getTokenBody tokenStr
                             |> Result.andThen (Base64.decode >> Result.mapError (\s -> TokenProcessingError <| "base64 error: " ++ s))
-                            |> Result.andThen (Json.decodeString inner >> Result.mapError TokenDecodeError)
+                            |> Result.andThen (Json.Decode.decodeString inner >> Result.mapError TokenDecodeError)
                 in
                     case transformedToken of
                         Ok val ->
-                            Json.succeed val
+                            Json.Decode.succeed val
 
                         Err err ->
-                            Json.fail "an error occcured"
+                            Json.Decode.fail "an error occcured"
             )
 
 
@@ -191,7 +190,7 @@ isExpired now token =
 
 decodeExp : Decoder Int
 decodeExp =
-    Json.oneOf [ Json.int, Json.map round Json.float ]
+    Json.Decode.oneOf [ Json.Decode.int, Json.Decode.map round Json.Decode.float ]
 
 
 checkUnacceptedToken : String -> Posix -> JwtError
@@ -353,27 +352,3 @@ promote401 err =
 
         _ ->
             HttpError err
-
-
-
-{- ====================================================
-    LOGGING IN - GETTING A TOKEN
-   ====================================================
--}
-
-
-{-| `authenticate` creates an Http.Request based on login credentials.
-There is very little to this function (and it will be removed in future releases), so feel free to role your own here instead.
-
-    submitCredentials : Model -> Cmd Msg
-    submitCredentials model =
-        E.object
-            [ ( "username", E.string model.uname )
-            , ( "password", E.string model.pword )
-            ]
-            |> authenticate "/sessions" tokenStringDecoder
-
--}
-authenticate : String -> Decoder a -> Value -> Request a
-authenticate url dec credentials =
-    Http.post url (jsonBody credentials) dec
