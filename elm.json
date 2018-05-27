@@ -3,7 +3,7 @@
     "name": "simonh1000/elm-jwt",
     "summary": "Supports decoding Jwt tokens & making authenticated HTTP requests",
     "license": "BSD-3-Clause",
-    "version": "1.0.0",
+    "version": "6.0.0",
     "exposed-modules": [
         "Jwt",
         "Jwt.Decoders"
