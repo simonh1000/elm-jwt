@@ -37,11 +37,6 @@ authenticated Http requests.
 
 @docs JwtError, promote401, handleError
 
-
-# Logging in
-
-@docs authenticate
-
 -}
 
 import Base64
@@ -157,7 +152,7 @@ unurl =
 
 fixlength : String -> Result JwtError String
 fixlength s =
-    case remainderBy (String.length s) 4 of
+    case modBy 4 (String.length s) of
         0 ->
             Result.Ok s
 
