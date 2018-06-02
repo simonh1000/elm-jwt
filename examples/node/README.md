@@ -8,10 +8,10 @@ Clone this repo into a new project folder and run install script.
 With npm
 
 ```sh
-$ npm install
-$ npm run server
+npm install
+npm run server
 <in another window>
-$ npm run dev
+npm run dev
 ```
 
 With yarn
