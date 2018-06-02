@@ -41,7 +41,7 @@ authenticated Http requests.
 
 import Base64
 import Http exposing (Request, expectJson, header, jsonBody, request, toTask)
-import Json.Decode exposing (Decoder, Value, field)
+import Json.Decode as Decode exposing (Decoder, Value, field)
 import String
 import Task exposing (Task)
 import Time exposing (Posix)
@@ -49,20 +49,20 @@ import Time exposing (Posix)
 
 {-| The following errors are modeled
 
-  - Any Http.Error, other than a 401
   - 401 (Unauthorized), due either to token expiry or e.g. inadequate permissions
   - token (non-)expiry information
-  - issues with processing (e.g. base 64 decoding) the token, and
+  - issues with processing (e.g. base 64 decoding) the token
   - problems decoding the json data within the content of the token
+  - Any Http.Error, other than a 401
 
 -}
 type JwtError
-    = HttpError Http.Error
-    | Unauthorized
+    = Unauthorized
     | TokenExpired
     | TokenNotExpired
     | TokenProcessingError String
-    | TokenDecodeError Json.Decode.Error
+    | TokenDecodeError Decode.Error
+    | HttpError Http.Error
 
 
 
@@ -80,35 +80,34 @@ decodeToken : Decoder a -> String -> Result JwtError a
 decodeToken dec =
     getTokenBody
         >> Result.andThen (Base64.decode >> Result.mapError TokenProcessingError)
-        >> Result.andThen (Json.Decode.decodeString dec >> Result.mapError TokenDecodeError)
+        >> Result.andThen (Decode.decodeString dec >> Result.mapError TokenDecodeError)
 
 
 {-| All the token parsing goodness in the form of a Json Decoder
 
     -- decode token from Firebase
     let firebaseToken =
-        decodeString
-            (tokenDecoder Jwt.Decoders.firebase)
-            tokenString
+            decodeString (tokenDecoder Jwt.Decoders.firebase) tokenString
 
 -}
 tokenDecoder : Decoder a -> Decoder a
-tokenDecoder inner =
-    Json.Decode.string
-        |> Json.Decode.andThen
+tokenDecoder dec =
+    Decode.string
+        |> Decode.andThen
             (\tokenStr ->
-                let
-                    transformedToken =
-                        getTokenBody tokenStr
-                            |> Result.andThen (Base64.decode >> Result.mapError (\s -> TokenProcessingError <| "base64 error: " ++ s))
-                            |> Result.andThen (Json.Decode.decodeString inner >> Result.mapError TokenDecodeError)
-                in
-                    case transformedToken of
-                        Ok val ->
-                            Json.Decode.succeed val
+                case decodeToken dec tokenStr of
+                    Ok val ->
+                        Decode.succeed val
 
-                        Err err ->
-                            Json.Decode.fail "an error occcured"
+                    Err (TokenProcessingError err) ->
+                        Decode.fail <| "TokenProcessingError: " ++ err
+
+                    Err (TokenDecodeError err) ->
+                        Decode.fail <| "TokenDecodeError: " ++ Debug.toString err
+
+                    Err err ->
+                        -- this branch will not be hit
+                        Decode.fail <| "OtherError: " ++ Debug.toString err
             )
 
 
@@ -185,20 +184,20 @@ isExpired now token =
 
 decodeExp : Decoder Int
 decodeExp =
-    Json.Decode.oneOf [ Json.Decode.int, Json.Decode.map round Json.Decode.float ]
+    Decode.oneOf [ Decode.int, Decode.map round Decode.float ]
 
 
 checkUnacceptedToken : String -> Posix -> JwtError
 checkUnacceptedToken token now =
     case isExpired now token of
-        Result.Ok True ->
+        Ok True ->
             TokenExpired
 
-        Result.Ok False ->
+        Ok False ->
             -- Although the token is not expired, server rejected request for some other reason
             TokenNotExpired
 
-        Result.Err jwtErr ->
+        Err jwtErr ->
             -- Pass through a decoding error
             jwtErr
 
@@ -313,7 +312,7 @@ sendCheckExpired token msgCreator req =
         |> Task.perform msgCreator
 
 
-{-| Takes an Http.Error. If it is a 401, then it checks the token for expiry.
+{-| Takes an Http.Error. If it is a 401, check the token for expiry.
 -}
 handleError : String -> Http.Error -> Task Never JwtError
 handleError token err =
@@ -321,8 +320,8 @@ handleError token err =
         Unauthorized ->
             checkTokenExpiry token
 
-        _ ->
-            Task.succeed (HttpError err)
+        other ->
+            Task.succeed other
 
 
 {-| Examines a 401 Unauthorized reponse, and converts the error to TokenExpired

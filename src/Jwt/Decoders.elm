@@ -12,7 +12,7 @@ authenticated Http requests.
 
 -}
 
-import Json.Decode as Json exposing (Decoder, field)
+import Json.Decode as Decode exposing (Decoder, field)
 
 
 {-| Generic constructor for commonly found fields in a Jwt token
@@ -29,11 +29,11 @@ type alias JwtToken =
 -}
 firebase : Decoder JwtToken
 firebase =
-    Json.succeed JwtToken
-        |> andMap (field "iat" Json.int)
-        |> andMap (field "exp" Json.int)
-        |> andMap (Json.maybe <| field "user_id" Json.string)
-        |> andMap (Json.maybe <| field "email" Json.string)
+    Decode.succeed JwtToken
+        |> andMap (field "iat" Decode.int)
+        |> andMap (field "exp" Decode.int)
+        |> andMap (Decode.maybe <| field "user_id" Decode.string)
+        |> andMap (Decode.maybe <| field "email" Decode.string)
 
 
 {-| Decoder for Guardian
@@ -41,11 +41,11 @@ firebase =
 -}
 phoenixGuardian : Decoder JwtToken
 phoenixGuardian =
-    Json.succeed JwtToken
-        |> andMap (field "iat" Json.int)
-        |> andMap (field "exp" Json.int)
-        |> andMap (Json.succeed Nothing)
-        |> andMap (Json.succeed Nothing)
+    Decode.succeed JwtToken
+        |> andMap (field "iat" Decode.int)
+        |> andMap (field "exp" Decode.int)
+        |> andMap (Decode.succeed Nothing)
+        |> andMap (Decode.succeed Nothing)
 
 
 
@@ -54,4 +54,4 @@ phoenixGuardian =
 
 andMap : Decoder a -> Decoder (a -> b) -> Decoder b
 andMap =
-    Json.map2 (|>)
+    Decode.map2 (|>)

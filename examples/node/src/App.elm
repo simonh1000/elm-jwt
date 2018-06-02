@@ -1,15 +1,15 @@
 module App exposing (Model, Msg, init, update, view)
 
 import Browser
+import Decoders exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Task exposing (Task)
 import Http
-import Json.Encode as E exposing (Value)
 import Json.Decode as Json exposing (field)
+import Json.Encode as E exposing (Value)
 import Jwt exposing (..)
-import Decoders exposing (..)
+import Task exposing (Task)
 
 
 -- MODEL
@@ -37,17 +37,15 @@ init _ =
 -- UPDATE
 
 
-type
-    Msg
-    -- User generated Msg
-    = Login
-    | TryToken
-    | TryInvalidToken
-    | TryErrorRoute
+type Msg
+    = Login -- onClick Login
+    | TryToken -- onCLick
+    | TryInvalidToken -- onCLick
+    | TryErrorRoute -- onCLick
       -- Component messages
-    | FormInput Field String
+    | FormInput Field String -- updating form input
       -- Cmd results
-    | Auth (Result Http.Error String)
+    | OnAuthResponse (Result Http.Error String)
     | GetResult (Result JwtError String)
     | ErrorRouteResult (Result JwtError String)
     | ServerFail_ JwtError
@@ -84,12 +82,12 @@ update message model =
                 |> Maybe.withDefault Cmd.none
             )
 
-        Auth res ->
+        OnAuthResponse res ->
             case res of
-                Result.Ok token ->
+                Ok token ->
                     ( { model | token = Just token, msg = "" }, Cmd.none )
 
-                Result.Err err ->
+                Err err ->
                     ( { model | msg = handleHttpError err }, Cmd.none )
 
         GetResult res ->
@@ -112,11 +110,11 @@ update message model =
             failHandler_ ServerFail_ jwtErr model
 
 
-failHandler_ : (JwtError -> Msg) -> JwtError -> Model -> ( Model, Cmd Msg )
+failHandler_ : (JwtError -> msg) -> JwtError -> Model -> ( Model, Cmd msg )
 failHandler_ msgCreator jwtErr model =
     case model.token of
         Just token ->
-            failHandler ServerFail_ token jwtErr model
+            failHandler msgCreator token jwtErr model
 
         Nothing ->
             ( { model | msg = Debug.toString jwtErr }, Cmd.none )
@@ -130,7 +128,7 @@ failHandler : (JwtError -> msg) -> String -> JwtError -> { model | msg : String 
 failHandler msgCreator token jwtErr model =
     case jwtErr of
         Jwt.Unauthorized ->
-            ( { model | msg = "Unauthorized" }
+            ( { model | msg = "Unauthorized, checking whether expired" }
             , Jwt.checkTokenExpiry token
                 |> Task.perform msgCreator
             )
@@ -141,11 +139,14 @@ failHandler msgCreator token jwtErr model =
         Jwt.TokenNotExpired ->
             ( { model | msg = "Insufficient priviledges" }, Cmd.none )
 
+        Jwt.TokenProcessingError err ->
+            ( { model | msg = "Processing error: " ++ err }, Cmd.none )
+
+        Jwt.TokenDecodeError err ->
+            ( { model | msg = "Decoding error: " ++ Debug.toString err }, Cmd.none )
+
         Jwt.HttpError err ->
             ( { model | msg = handleHttpError err }, Cmd.none )
-
-        _ ->
-            ( { model | msg = jwtErrorToString jwtErr }, Cmd.none )
 
 
 handleHttpError : Http.Error -> String
@@ -157,11 +158,11 @@ handleHttpError error =
                     Json.decodeString errorDecoder response.body
             in
                 case decodedError of
-                    Result.Ok errorMsg ->
+                    Ok errorMsg ->
                         -- response.status.message ++ ": " ++ errorMsg
                         "todo errorMsg"
 
-                    Result.Err _ ->
+                    Err _ ->
                         response.status.message
 
         Http.BadPayload s _ ->
@@ -189,7 +190,7 @@ view : Model -> Html Msg
 view model =
     div
         [ class "container" ]
-        [ h1 [] [ text "elm-jwt with Phoenix backend" ]
+        [ h1 [] [ text "elm-jwt example" ]
         , p [] [ text "username = testuser, password = testpassword" ]
         , div
             [ class "row" ]
@@ -202,7 +203,6 @@ view model =
                         [ class "form-group" ]
                         [ label [ for "uname" ] [ text "Username" ]
                         , input
-                            -- [ on "input" (Json.map (Input Uname) targetValue) (Signal.message address)
                             [ onInput (FormInput Uname)
                             , class "form-control"
                             , value model.uname
@@ -265,6 +265,7 @@ mkButton msg str =
 -- COMMANDS
 
 
+serverUrl : String
 serverUrl =
     "http://localhost:5000"
 
@@ -280,7 +281,7 @@ submitCredentials model =
                 |> Http.jsonBody
     in
         Http.post (serverUrl ++ "/sessions") creds tokenStringDecoder
-            |> Http.send Auth
+            |> Http.send OnAuthResponse
 
 
 tryToken : String -> Cmd Msg
