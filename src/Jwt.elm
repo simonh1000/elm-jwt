@@ -125,22 +125,39 @@ tokenDecoder inner =
 
 
 getTokenBody : String -> Result JwtError String
-getTokenBody token =
+getTokenBody =
+    getTokenParts >> Result.map Tuple.second
+
+
+getTokenHeader : String -> Result JwtError String
+getTokenHeader =
+    getTokenParts >> Result.map Tuple.first
+
+
+getTokenParts : String -> Result JwtError ( String, String )
+getTokenParts token =
     let
         processor =
             unurl >> String.split "." >> List.map fixlength
     in
         case processor token of
-            _ :: (Result.Err e) :: _ :: [] ->
-                Result.Err e
+            [ Ok header, Ok body, Ok _ ] ->
+                Ok ( header, body )
 
-            _ :: (Result.Ok encBody) :: _ :: [] ->
-                Result.Ok encBody
+            [ Err err, _, _ ] ->
+                Err err
+
+            [ _, Err err, _ ] ->
+                Err err
+
+            [ _, _, Err err ] ->
+                Err err
 
             _ ->
-                Result.Err <| TokenProcessingError "Token has invalid shape"
+                Err <| TokenProcessingError "Token has invalid shape"
 
 
+{-| -}
 unurl : String -> String
 unurl =
     let
