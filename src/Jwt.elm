@@ -47,7 +47,7 @@ authenticated Http requests.
 
 import Base64
 import Http exposing (Request, expectJson, header, jsonBody, request, toTask)
-import Json.Decode as Json exposing (Value, field)
+import Json.Decode as Decode exposing (Decoder, Value)
 import String
 import Task exposing (Task)
 import Time exposing (Time)
@@ -82,11 +82,11 @@ type JwtError
 In the event of success, `decodeToken` returns an Elm record structure using the JSON Decoder.
 
 -}
-decodeToken : Json.Decoder a -> String -> Result JwtError a
+decodeToken : Decode.Decoder a -> String -> Result JwtError a
 decodeToken dec =
     getTokenBody
         >> Result.andThen (Base64.decode >> Result.mapError TokenDecodeError)
-        >> Result.andThen (Json.decodeString dec >> Result.mapError TokenDecodeError)
+        >> Result.andThen (Decode.decodeString dec >> Result.mapError TokenDecodeError)
 
 
 {-| All the token parsing goodness in the form of a Json Decoder
@@ -98,25 +98,24 @@ decodeToken dec =
             tokenString
 
 -}
-tokenDecoder : Json.Decoder a -> Json.Decoder a
-tokenDecoder inner =
-    Json.string
-        |> Json.andThen
+tokenDecoder : Decoder a -> Decoder a
+tokenDecoder dec =
+    Decode.string
+        |> Decode.andThen
             (\tokenStr ->
-                let
-                    transformedToken =
-                        getTokenBody tokenStr
-                            |> Result.mapError toString
-                            |> Result.andThen Base64.decode
-                            |> Result.mapError ((++) "base64 error: ")
-                            |> Result.andThen (Json.decodeString inner)
-                in
-                    case transformedToken of
-                        Ok val ->
-                            Json.succeed val
+                case decodeToken dec tokenStr of
+                    Ok val ->
+                        Decode.succeed val
 
-                        Err err ->
-                            Json.fail err
+                    Err (TokenProcessingError err) ->
+                        Decode.fail <| "TokenProcessingError: " ++ err
+
+                    Err (TokenDecodeError err) ->
+                        Decode.fail <| "TokenDecodeError: " ++ toString err
+
+                    Err err ->
+                        -- this branch will not be hit
+                        Decode.fail <| "OtherError: " ++ toString err
             )
 
 
@@ -204,7 +203,7 @@ any error that occurred while decoding the token.
 -}
 isExpired : Time -> String -> Result JwtError Bool
 isExpired now token =
-    decodeToken (field "exp" Json.float) token
+    decodeToken (Decode.field "exp" Decode.float) token
         |> Result.map (\exp -> now > exp * 1000)
 
 
@@ -233,14 +232,14 @@ checkUnacceptedToken token now =
 {-| createRequest creates a Http.Request with the token added to the headers, and
 sets the `withCredentials` field to True.
 -}
-createRequest : String -> String -> String -> Http.Body -> Json.Decoder a -> Http.Request a
+createRequest : String -> String -> String -> Http.Body -> Decode.Decoder a -> Http.Request a
 createRequest method token url body =
     createRequestObject method token url body >> request
 
 
 {-| createRequestObject creates the data structure expected by Http.Request.
 It is broken out here so that users can change the expect part in the event that
-one of their REST apis does not return Json.
+one of their REST apis does not return Decode.
 
 In my experience, the Authorization header is NOT case sensitive. Do raise an issue if you experience otherwise.
 
@@ -252,7 +251,7 @@ createRequestObject :
     -> String
     -> String
     -> Http.Body
-    -> Json.Decoder a
+    -> Decode.Decoder a
     -> { method : String, headers : List Http.Header, url : String, body : Http.Body, expect : Http.Expect a, timeout : Maybe Time, withCredentials : Bool }
 createRequestObject method token url body dec =
     { method = method
@@ -274,7 +273,7 @@ attached to the headers.
             |> Jwt.send DataResult
 
 -}
-get : String -> String -> Json.Decoder a -> Request a
+get : String -> String -> Decode.Decoder a -> Request a
 get token url dec =
     createRequest "GET" token url Http.emptyBody dec
 
@@ -284,27 +283,27 @@ attached to the headers.
 
 ** Note that is important to use jsonBody to ensure that the 'application/json' is added to the headers **
 
-    postContent : Token -> Json.Decoder a -> E.Value -> String -> Request a
+    postContent : Token -> Decode.Decoder a -> E.Value -> String -> Request a
     postContent token dec value url =
         Jwt.post token url (Http.jsonBody value) (phoenixDecoder dec)
             |> Jwt.send ContentResult
 
 -}
-post : String -> String -> Http.Body -> Json.Decoder a -> Request a
+post : String -> String -> Http.Body -> Decode.Decoder a -> Request a
 post =
     createRequest "POST"
 
 
 {-| Create a PUT request with a token attached to the Authorization header
 -}
-put : String -> String -> Http.Body -> Json.Decoder a -> Request a
+put : String -> String -> Http.Body -> Decode.Decoder a -> Request a
 put =
     createRequest "PUT"
 
 
 {-| returns a `DELETE` Http.Request with the token attached to the headers.
 -}
-delete : String -> String -> Json.Decoder a -> Request a
+delete : String -> String -> Decode.Decoder a -> Request a
 delete token url dec =
     createRequest "DELETE" token url Http.emptyBody dec
 
@@ -348,7 +347,7 @@ handleError token err =
 {-| Examines a 401 Unauthorized reponse, and converts the error to TokenExpired
 when that is the case.
 
-    getAuth : String -> String -> Json.Decoder a -> Task Never (Result JwtError a)
+    getAuth : String -> String -> Decode.Decoder a -> Task Never (Result JwtError a)
     getAuth token url dec =
         createRequest "GET" token url Http.emptyBody dec
             |> toTask
@@ -388,6 +387,6 @@ There is very little to this function (and it will be removed in future releases
             |> authenticate "/sessions" tokenStringDecoder
 
 -}
-authenticate : String -> Json.Decoder a -> Value -> Request a
+authenticate : String -> Decode.Decoder a -> Value -> Request a
 authenticate url dec credentials =
     Http.post url (jsonBody credentials) dec
