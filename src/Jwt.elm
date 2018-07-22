@@ -65,6 +65,16 @@ type JwtError
     | HttpError Http.Error
 
 
+errorToString : JwtError -> String
+errorToString jwtError =
+    case jwtError of
+        Unauthorized ->
+            "Unauthorized"
+
+        _ ->
+            "some error"
+
+
 
 -- TOKEN PROCESSING
 
@@ -99,15 +109,8 @@ tokenDecoder dec =
                     Ok val ->
                         Decode.succeed val
 
-                    Err (TokenProcessingError err) ->
-                        Decode.fail <| "TokenProcessingError: " ++ err
-
-                    Err (TokenDecodeError err) ->
-                        Decode.fail <| "TokenDecodeError: " ++ Debug.toString err
-
                     Err err ->
-                        -- this branch will not be hit
-                        Decode.fail <| "OtherError: " ++ Debug.toString err
+                        Decode.fail <| errorToString err
             )
 
 

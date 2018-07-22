@@ -9,10 +9,9 @@ import App exposing (Model, Msg, init, update, view)
 
 main : Program () Model Msg
 main =
-    Browser.fullscreen
+    Browser.document
         { init = init
         , update = update
-        , view = (\m -> Browser.Page "Jwt test" [ view m ])
-        , onNavigation = Nothing
+        , view = (\m -> Browser.Document "Jwt test" [ view m ])
         , subscriptions = \_ -> Sub.none
         }

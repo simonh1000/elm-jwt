@@ -6,7 +6,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
-import Json.Decode as Json exposing (field)
+import Json.Decode as Decode
 import Json.Encode as E exposing (Value)
 import Jwt exposing (..)
 import Task exposing (Task)
@@ -28,7 +28,7 @@ type alias Model =
     }
 
 
-init : Browser.Env flags -> ( Model, Cmd Msg )
+init : flags -> ( Model, Cmd Msg )
 init _ =
     ( Model "testuser" "testpassword" Nothing "", Cmd.none )
 
@@ -155,7 +155,7 @@ handleHttpError error =
         Http.BadStatus response ->
             let
                 decodedError =
-                    Json.decodeString errorDecoder response.body
+                    Decode.decodeString errorDecoder response.body
             in
                 case decodedError of
                     Ok errorMsg ->
@@ -172,9 +172,9 @@ handleHttpError error =
             Debug.toString error
 
 
-errorDecoder : Json.Decoder Json.Value
+errorDecoder : Decode.Decoder Decode.Value
 errorDecoder =
-    field "errors" Json.value
+    Decode.field "errors" Decode.value
 
 
 jwtErrorToString : JwtError -> String
