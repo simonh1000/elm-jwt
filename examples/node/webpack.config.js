@@ -1,12 +1,18 @@
 const path = require("path");
 const webpack = require("webpack");
 const merge = require("webpack-merge");
+const history = require('koa-connect-history-api-fallback');
+const convert = require('koa-connect');
+const proxy = require('http-proxy-middleware');
+
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HTMLWebpackPlugin = require("html-webpack-plugin");
 const CleanWebpackPlugin = require("clean-webpack-plugin");
 
-var MODE =
-    process.env.npm_lifecycle_event === "prod" ? "production" : "development";
+// to extract the css as a separate file
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+
+var MODE = process.env.npm_lifecycle_event === "prod" ? "production" : "development";
 var filename = MODE == "production" ? "[name]-[hash].js" : "index.js";
 
 var common = {
@@ -92,23 +98,24 @@ if (MODE === "development") {
                             loader: "elm-webpack-loader",
                             // add Elm's debug overlay to output
                             options: {
-                                debug: true
+                                debug: true,
+                                forceWatch: true
                             }
                         }
                     ]
                 }
             ]
         },
-        devServer: {
+        serve: {
             inline: true,
             stats: "errors-only",
-            contentBase: path.join(__dirname, "src/assets"),
-            proxy: {
-                "/sessions": "http://localhost:5000/",
-                "/api": "http://localhost:5000/"
-            },
-            // For SPAs: serve index.html in place of 404 responses
-            historyApiFallback: true
+            content: [path.join(__dirname, "src/assets")],
+            add: (app, middleware, options) => {
+                // routes /xyz -> /index.html
+                app.use(history());
+                app.use(convert(proxy('/api', { target: 'http://localhost:5000' })));
+                app.use(convert(proxy('/sessions', { target: 'http://localhost:5000' })));
+            }
         }
     });
 }
@@ -128,7 +135,12 @@ if (MODE === "production") {
                 {
                     from: "src/assets"
                 }
-            ])
+            ]),
+            new MiniCssExtractPlugin({
+                // Options similar to the same options in webpackOptions.output
+                // both options are optional
+                filename: "[name]-[hash].css"
+            })
         ],
         module: {
             rules: [
@@ -140,7 +152,17 @@ if (MODE === "production") {
                             loader: "elm-webpack-loader"
                         }
                     ]
-                }
+                },
+            {
+                test: /\.css$/,
+                exclude: [/elm-stuff/, /node_modules/],
+                loaders: [MiniCssExtractPlugin.loader, "css-loader"]
+            },
+            {
+                test: /\.scss$/,
+                exclude: [/elm-stuff/, /node_modules/],
+                loaders: [MiniCssExtractPlugin.loader, "css-loader", "sass-loader"]
+            }
             ]
         }
     });
