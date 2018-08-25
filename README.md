@@ -31,6 +31,7 @@ The library also provides modified versions of Elm standard Http functions to ma
 
 ## Changelog
 
+* 6.0.0: 0.19
 * 5.3.0: Adds decoder got Elixir-Guardian token
 * 5.2.0: Update NodeJS example
 * 5.1.0: Adds a decoder for the Firebase Jwt.
