@@ -1,21 +1,7 @@
-module Jwt
-    exposing
-        ( JwtError(..)
-        , checkTokenExpiry
-        , createRequest
-        , createRequestObject
-        , decodeToken
-        , delete
-        , get
-        , handleError
-        , isExpired
-        , post
-        , promote401
-        , put
-        , send
-        , sendCheckExpired
-        , tokenDecoder
-        )
+module Jwt exposing
+    ( decodeToken, tokenDecoder, isExpired, checkTokenExpiry
+    , JwtError(..), promote401, handleError
+    )
 
 {-| Helper functions for working with Jwt tokens and authenticated CRUD APIs.
 
@@ -40,7 +26,7 @@ authenticated Http requests.
 -}
 
 import Base64
-import Http exposing (Request, expectJson, header, jsonBody, request, toTask)
+import Http exposing (expectJson, header, jsonBody, request)
 import Json.Decode as Decode exposing (Decoder, Value, field)
 import String
 import Task exposing (Task)
@@ -124,15 +110,15 @@ getTokenBody token =
         processor =
             unurl >> String.split "." >> List.map fixlength
     in
-        case processor token of
-            _ :: (Result.Err e) :: _ :: [] ->
-                Result.Err e
+    case processor token of
+        _ :: (Result.Err e) :: _ :: [] ->
+            Result.Err e
 
-            _ :: (Result.Ok encBody) :: _ :: [] ->
-                Result.Ok encBody
+        _ :: (Result.Ok encBody) :: _ :: [] ->
+            Result.Ok encBody
 
-            _ ->
-                Result.Err <| TokenProcessingError "Token has invalid shape"
+        _ ->
+            Result.Err <| TokenProcessingError "Token has invalid shape"
 
 
 unurl : String -> String
@@ -149,7 +135,7 @@ unurl =
                 _ ->
                     c
     in
-        String.map fix
+    String.map fix
 
 
 fixlength : String -> Result JwtError String
@@ -205,116 +191,6 @@ checkUnacceptedToken token now =
             jwtErr
 
 
-
-{- ====================================================
-    MAKING AUTHENTICATED API CALLS
-   ====================================================
--}
-
-
-{-| createRequest creates a Http.Request with the token added to the headers, and
-sets the `withCredentials` field to True.
--}
-createRequest : String -> String -> String -> Http.Body -> Decoder a -> Http.Request a
-createRequest method token url body =
-    createRequestObject method token url body >> request
-
-
-{-| createRequestObject creates the data structure expected by Http.Request.
-It is broken out here so that users can change the expect part in the event that
-one of their REST apis does not return Json.
-
-In my experience, the Authorization header is NOT case sensitive. Do raise an issue if you experience otherwise.
-
-See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/withCredentials) for more on withCredentials. The default is False.
-
--}
-createRequestObject :
-    String
-    -> String
-    -> String
-    -> Http.Body
-    -> Decoder a
-    -> { method : String, headers : List Http.Header, url : String, body : Http.Body, expect : Http.Expect a, timeout : Maybe Float, withCredentials : Bool }
-createRequestObject method token url body dec =
-    { method = method
-    , headers = [ header "Authorization" ("Bearer " ++ token) ]
-    , url = url
-    , body = body
-    , expect = expectJson dec
-    , timeout = Nothing
-    , withCredentials = False
-    }
-
-
-{-| `get` is a replacement for `Http.get` that returns a Http.Request with the token
-attached to the headers.
-
-    getData : String -> Cmd Msg
-    getData token =
-        Jwt.get token "/api/data" dataDecoder
-            |> Jwt.send DataResult
-
--}
-get : String -> String -> Decoder a -> Request a
-get token url dec =
-    createRequest "GET" token url Http.emptyBody dec
-
-
-{-| post is a replacement for `Http.post` that returns a Http.Request with the token
-attached to the headers.
-
-** Note that is important to use jsonBody to ensure that the 'application/json' is added to the headers **
-
-    postContent : Token -> Decoder a -> E.Value -> String -> Request a
-    postContent token dec value url =
-        Jwt.post token url (Http.jsonBody value) (phoenixDecoder dec)
-            |> Jwt.send ContentResult
-
--}
-post : String -> String -> Http.Body -> Decoder a -> Request a
-post =
-    createRequest "POST"
-
-
-{-| Create a PUT request with a token attached to the Authorization header
--}
-put : String -> String -> Http.Body -> Decoder a -> Request a
-put =
-    createRequest "PUT"
-
-
-{-| returns a `DELETE` Http.Request with the token attached to the headers.
--}
-delete : String -> String -> Decoder a -> Request a
-delete token url dec =
-    createRequest "DELETE" token url Http.emptyBody dec
-
-
-{-| `send` replaces `Http.send`. On receipt of a 401 error, it returns a Jwt.Unauthorized.
--}
-send : (Result JwtError a -> msg) -> Request a -> Cmd msg
-send msgCreator req =
-    let
-        conv : (Result JwtError a -> msg) -> (Result Http.Error a -> msg)
-        conv fn =
-            fn << Result.mapError promote401
-    in
-        Http.send (conv msgCreator) req
-
-
-{-| `sendCheckExpired` is similar to `send` but, on receiving a 401, it carries out a further check to
-determine whether the token has expired.
--}
-sendCheckExpired : String -> (Result JwtError a -> msg) -> Request a -> Cmd msg
-sendCheckExpired token msgCreator req =
-    req
-        |> toTask
-        |> Task.map Result.Ok
-        |> Task.onError (Task.map Err << handleError token)
-        |> Task.perform msgCreator
-
-
 {-| Takes an Http.Error. If it is a 401, check the token for expiry.
 -}
 handleError : String -> Http.Error -> Task Never JwtError
@@ -341,9 +217,10 @@ when that is the case.
 promote401 : Http.Error -> JwtError
 promote401 err =
     case err of
-        Http.BadStatus { status } ->
-            if status.code == 401 then
+        Http.BadStatus status ->
+            if status == 401 then
                 Unauthorized
+
             else
                 HttpError err
 
