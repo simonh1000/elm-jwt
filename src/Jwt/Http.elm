@@ -79,6 +79,43 @@ post token { url, body, expect } =
     request options
 
 
+{-| Takes an Http.Error. If it is a 401, check the token for expiry.
+-}
+handleError : String -> Http.Error -> Task Never JwtError
+handleError token err =
+    case promote401 err of
+        Unauthorized ->
+            checkTokenExpiry token
+
+        other ->
+            Task.succeed other
+
+
+{-| Examines a 401 Unauthorized reponse, and converts the error to TokenExpired
+when that is the case.
+
+    getAuth : String -> String -> Decoder a -> Task Never (Result JwtError a)
+    getAuth token url dec =
+        createRequest "GET" token url Http.emptyBody dec
+            |> toTask
+            |> Task.map Result.Ok
+            |> Task.onError (promote401 token)
+
+-}
+promote401 : Http.Error -> JwtError
+promote401 err =
+    case err of
+        Http.BadStatus status ->
+            if status == 401 then
+                Unauthorized
+
+            else
+                HttpError err
+
+        _ ->
+            HttpError err
+
+
 
 -- {-| Create a PUT request with a token attached to the Authorization header
 -- -}

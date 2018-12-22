@@ -1,6 +1,6 @@
 module Jwt exposing
     ( decodeToken, tokenDecoder, isExpired, checkTokenExpiry
-    , JwtError(..), promote401, handleError
+    , JwtError(..)
     )
 
 {-| Helper functions for working with Jwt tokens and authenticated CRUD APIs.
@@ -19,14 +19,13 @@ authenticated Http requests.
 @docs createRequest, createRequestObject, send, sendCheckExpired, get, post, put, delete
 
 
-# Error handlers
+# Errors
 
-@docs JwtError, promote401, handleError
+@docs JwtError
 
 -}
 
 import Base64
-import Http exposing (expectJson, header, jsonBody, request)
 import Json.Decode as Decode exposing (Decoder, Value, field)
 import String
 import Task exposing (Task)
@@ -43,12 +42,11 @@ import Time exposing (Posix)
 
 -}
 type JwtError
-    = Unauthorized
-    | TokenExpired
+    = TokenExpired
     | TokenNotExpired
     | TokenProcessingError String
     | TokenDecodeError Decode.Error
-    | HttpError Http.Error
+    | Unauthorized -- unused
 
 
 errorToString : JwtError -> String
@@ -189,40 +187,3 @@ checkUnacceptedToken token now =
         Err jwtErr ->
             -- Pass through a decoding error
             jwtErr
-
-
-{-| Takes an Http.Error. If it is a 401, check the token for expiry.
--}
-handleError : String -> Http.Error -> Task Never JwtError
-handleError token err =
-    case promote401 err of
-        Unauthorized ->
-            checkTokenExpiry token
-
-        other ->
-            Task.succeed other
-
-
-{-| Examines a 401 Unauthorized reponse, and converts the error to TokenExpired
-when that is the case.
-
-    getAuth : String -> String -> Decoder a -> Task Never (Result JwtError a)
-    getAuth token url dec =
-        createRequest "GET" token url Http.emptyBody dec
-            |> toTask
-            |> Task.map Result.Ok
-            |> Task.onError (promote401 token)
-
--}
-promote401 : Http.Error -> JwtError
-promote401 err =
-    case err of
-        Http.BadStatus status ->
-            if status == 401 then
-                Unauthorized
-
-            else
-                HttpError err
-
-        _ ->
-            HttpError err
