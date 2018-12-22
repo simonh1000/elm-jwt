@@ -1,21 +1,8 @@
-module Jwt
-    exposing
-        ( JwtError(..)
-        , checkTokenExpiry
-        , createRequest
-        , createRequestObject
-        , decodeToken
-        , delete
-        , get
-        , handleError
-        , isExpired
-        , post
-        , promote401
-        , put
-        , send
-        , sendCheckExpired
-        , tokenDecoder
-        )
+module Jwt exposing
+    ( decodeToken, tokenDecoder, isExpired, checkTokenExpiry
+    , createRequest, createRequestObject, send, sendCheckExpired, get, post, put, delete
+    , JwtError(..), promote401, handleError
+    )
 
 {-| Helper functions for working with Jwt tokens and authenticated CRUD APIs.
 
@@ -124,15 +111,15 @@ getTokenBody token =
         processor =
             unurl >> String.split "." >> List.map fixlength
     in
-        case processor token of
-            _ :: (Result.Err e) :: _ :: [] ->
-                Result.Err e
+    case processor token of
+        _ :: (Result.Err e) :: _ :: [] ->
+            Result.Err e
 
-            _ :: (Result.Ok encBody) :: _ :: [] ->
-                Result.Ok encBody
+        _ :: (Result.Ok encBody) :: _ :: [] ->
+            Result.Ok encBody
 
-            _ ->
-                Result.Err <| TokenProcessingError "Token has invalid shape"
+        _ ->
+            Result.Err <| TokenProcessingError "Token has invalid shape"
 
 
 unurl : String -> String
@@ -149,7 +136,7 @@ unurl =
                 _ ->
                     c
     in
-        String.map fix
+    String.map fix
 
 
 fixlength : String -> Result JwtError String
@@ -212,8 +199,7 @@ checkUnacceptedToken token now =
 -}
 
 
-{-| createRequest creates a Http.Request with the token added to the headers, and
-sets the `withCredentials` field to True.
+{-| createRequest creates a Http.Request with the token added to the headers
 -}
 createRequest : String -> String -> String -> Http.Body -> Decoder a -> Http.Request a
 createRequest method token url body =
@@ -225,8 +211,6 @@ It is broken out here so that users can change the expect part in the event that
 one of their REST apis does not return Json.
 
 In my experience, the Authorization header is NOT case sensitive. Do raise an issue if you experience otherwise.
-
-See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/withCredentials) for more on withCredentials. The default is False.
 
 -}
 createRequestObject :
@@ -264,7 +248,7 @@ get token url dec =
 {-| post is a replacement for `Http.post` that returns a Http.Request with the token
 attached to the headers.
 
-** Note that is important to use jsonBody to ensure that the 'application/json' is added to the headers **
+\*\* Note that is important to use jsonBody to ensure that the 'application/json' is added to the headers \*\*
 
     postContent : Token -> Decoder a -> E.Value -> String -> Request a
     postContent token dec value url =
@@ -300,7 +284,7 @@ send msgCreator req =
         conv fn =
             fn << Result.mapError promote401
     in
-        Http.send (conv msgCreator) req
+    Http.send (conv msgCreator) req
 
 
 {-| `sendCheckExpired` is similar to `send` but, on receiving a 401, it carries out a further check to
@@ -344,6 +328,7 @@ promote401 err =
         Http.BadStatus { status } ->
             if status.code == 401 then
                 Unauthorized
+
             else
                 HttpError err
 
