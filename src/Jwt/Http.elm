@@ -16,8 +16,7 @@ import Time exposing (Posix)
 -}
 
 
-{-| `get` is a replacement for `Http.get` that returns a Http.Request with the token
-attached to the headers.
+{-| `get` is a replacement for `Http.get` that also takes a token, which is attached to the headers.
 
     getData : String -> Cmd Msg
     getData token =
@@ -47,8 +46,7 @@ get token { url, expect } =
     request options
 
 
-{-| post is a replacement for `Http.post` that returns a Http.Request with the token
-attached to the headers.
+{-| post is a replacement for `Http.post` that also takes a token, which is attached to the headers.
 
 \*\* Note that is important to use jsonBody to ensure that the 'application/json' is added to the headers \*\*
 

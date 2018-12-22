@@ -41,16 +41,16 @@ init _ =
 
 type Msg
     = Login -- onClick Login
+    | FormInput Field String -- updating form input
+      -- after receiving token
     | TryToken -- onCLick
     | TryInvalidToken -- onCLick
     | TryErrorRoute -- onCLick
-      -- Component messages
-    | FormInput Field String -- updating form input
       -- Cmd results
-    | OnAuthResponse (Result Http.Error String)
-    | GetResult (Result JwtError String)
-    | ErrorRouteResult (Result JwtError String)
-    | ServerFail_ JwtError
+    | OnLoginResponse (Result Http.Error String)
+    | OnDataResponse (Result Http.Error String)
+    | OnErrorRouteResponse (Result Http.Error String)
+    | ServerFail JwtError
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -84,7 +84,7 @@ update message model =
                 |> Maybe.withDefault Cmd.none
             )
 
-        OnAuthResponse res ->
+        OnLoginResponse res ->
             case res of
                 Ok token ->
                     ( { model | token = Just token, msg = "" }, Cmd.none )
@@ -92,24 +92,27 @@ update message model =
                 Err err ->
                     ( { model | msg = handleHttpError err }, Cmd.none )
 
-        GetResult res ->
+        OnDataResponse res ->
             case res of
                 Ok msg ->
                     ( { model | msg = msg }, Cmd.none )
 
-                Err jwtErr ->
-                    failHandler_ ServerFail_ jwtErr model
+                Err err ->
+                    -- failHandler_ ServerFail jwtErr model
+                    ( { model | msg = Debug.toString err }, Cmd.none )
 
-        ErrorRouteResult res ->
-            case res of
-                Ok r ->
-                    ( { model | msg = r }, Cmd.none )
-
-                Err jwtErr ->
-                    failHandler_ ServerFail_ jwtErr model
-
-        ServerFail_ jwtErr ->
-            failHandler_ ServerFail_ jwtErr model
+        -- OnErrorRouteResponse res ->
+        --     case res of
+        --         Ok r ->
+        --             ( { model | msg = r }, Cmd.none )
+        --
+        --         Err jwtErr ->
+        --             failHandler_ ServerFail jwtErr model
+        --
+        -- ServerFail jwtErr ->
+        --     failHandler_ ServerFail jwtErr model
+        _ ->
+            ( model, Cmd.none )
 
 
 failHandler_ : (JwtError -> msg) -> JwtError -> Model -> ( Model, Cmd msg )
@@ -272,20 +275,25 @@ submitCredentials model =
                 |> E.object
                 |> Http.jsonBody
     in
-    Http.post { url = serverUrl ++ "/sessions", body = body, expect = Http.expectJson OnAuthResponse tokenStringDecoder }
+    Http.post
+        { url = serverUrl ++ "/sessions"
+        , body = body
+        , expect = Http.expectJson OnLoginResponse tokenStringDecoder
+        }
 
 
 tryToken : String -> Cmd Msg
 tryToken token =
-    -- JHttp.get token { url = serverUrl ++ "/api/data", expect = expectJson  dataDecoder
-    --     |> Jwt.sendCheckExpired token GetResult
-    Cmd.none
+    JHttp.get token
+        { url = serverUrl ++ "/api/data"
+        , expect = Http.expectJson OnDataResponse dataDecoder
+        }
 
 
 tryErrorRoute : String -> Cmd Msg
 tryErrorRoute token =
     -- Jwt.get token { url = serverUrl ++ "/api/data_error", expect = expectJson  dataDecoder
-    --     |> Jwt.send ErrorRouteResult
+    --     |> Jwt.send OnErrorRouteResponse
     Cmd.none
 
 
@@ -298,6 +306,6 @@ main =
     Browser.document
         { init = init
         , update = update
-        , view = \m -> Browser.Document "Jwt test" [ view m ]
+        , view = \m -> Browser.Document "elm-jwt test" [ view m ]
         , subscriptions = \_ -> Sub.none
         }
