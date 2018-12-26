@@ -28,21 +28,11 @@ var ensureAuthorized = function (req, res, next) {
             return res.status(401).send('JsonWebTokenError');
         }
         req.user = user;
+        console.log("ensureAuthorized: all good");
         return next();
     });
 };
 
-// var ensureAdmin = function (req, res, next) {
-//     ensureAuthorized(req, res, function () {
-//         if (req.user.role == 'admin')
-//             return next();
-//         else {
-//             console.log("ensureAdmin: failed");
-//             res.sendStatus(403);
-//         }
-//     });
-// };
 
 exports.ensureAuthorized = ensureAuthorized;
 exports.jwtSign = jwtSign;
-// exports.ensureAdmin = ensureAdmin;

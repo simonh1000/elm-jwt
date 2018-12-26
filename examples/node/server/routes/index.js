@@ -9,8 +9,8 @@ module.exports = function (app) {
     app.use('/api', apidefault);
     app.use('/sessions', auth);
 
-    // app.use(express.static(path.join(__dirname, '../../dist')));
-    // 
+    app.use(express.static(path.join(__dirname, '../../')));
+    //
     // app.route('/*').get(function(req, res, next) {
     //     res.sendFile(path.join(__dirname, '../../dist/index.html'));
     // });

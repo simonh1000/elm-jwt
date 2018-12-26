@@ -1,18 +1,22 @@
-# Elm JWT Node example
+# Elm-Jwt: Node example
 
 ## Installation
 
-Clone this repo into a new project folder and run install script.
-(I ignore the errors about missing jquery as it is best not to use the Bootstrap jquery-based components with Elm)
+elm make src/Main.elm --output=index019.html
+http://localhost:5000/index019.html
+
+
+-- Too be updated
 
 With npm
 
 ```sh
-$ npm install
-$ npm run server
+npm install
+npm run server
 <in another window>
-$ npm run dev
+npm run dev
 ```
+
 
 With yarn
 ```sh
