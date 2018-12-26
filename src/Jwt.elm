@@ -122,14 +122,17 @@ getTokenParts token =
             unurl >> String.split "." >> List.map fixlength
     in
     case processor token of
-        _ :: (Result.Err e) :: _ :: [] ->
-            Result.Err e
+        [ Ok header, Ok encBody, _ ] ->
+            Ok ( header, encBody )
 
-        _ :: (Result.Ok encBody) :: _ :: [] ->
-            Result.Ok encBody
+        [ _, Err e, _ ] ->
+            Err e
+
+        [ Err e, _, _ ] ->
+            Err e
 
         _ ->
-            Result.Err <| TokenProcessingError "Token has invalid shape"
+            Err <| TokenProcessingError "Token has invalid shape"
 
 
 {-| -}
@@ -154,16 +157,16 @@ fixlength : String -> Result JwtError String
 fixlength s =
     case modBy 4 (String.length s) of
         0 ->
-            Result.Ok s
+            Ok s
 
         2 ->
-            Result.Ok <| String.concat [ s, "==" ]
+            Ok <| String.concat [ s, "==" ]
 
         3 ->
-            Result.Ok <| String.concat [ s, "=" ]
+            Ok <| String.concat [ s, "=" ]
 
         _ ->
-            Result.Err <| TokenProcessingError "Wrong length"
+            Err <| TokenProcessingError "Wrong length"
 
 
 {-| Checks a token for Expiry. Returns expiry or any errors that occurred in decoding.
@@ -219,7 +222,7 @@ createRequest method token url body =
 
 {-| createRequestObject creates the data structure expected by Http.Request.
 It is broken out here so that users can change the expect part in the event that
-one of their REST apis does not return Decode.
+one of their REST apis does not return Json.
 
 In my experience, the Authorization header is NOT case sensitive. Do raise an issue if you experience otherwise.
 
@@ -305,7 +308,7 @@ sendCheckExpired : String -> (Result JwtError a -> msg) -> Request a -> Cmd msg
 sendCheckExpired token msgCreator req =
     req
         |> toTask
-        |> Task.map Result.Ok
+        |> Task.map Ok
         |> Task.onError (Task.map Err << handleError token)
         |> Task.perform msgCreator
 
@@ -329,7 +332,7 @@ when that is the case.
     getAuth token url dec =
         createRequest "GET" token url Http.emptyBody dec
             |> toTask
-            |> Task.map Result.Ok
+            |> Task.map Ok
             |> Task.onError (promote401 token)
 
 -}

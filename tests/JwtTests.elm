@@ -1,10 +1,10 @@
-module JwtTests exposing (..)
+module JwtTests exposing (Jwt1, expJwt1, invalidToken, jwt1Decoder, jwt1HeaderDecoder, suite, validToken)
 
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, list, string)
-import Test exposing (..)
-import Jwt exposing (..)
 import Json.Decode as Decode
+import Jwt exposing (..)
+import Test exposing (..)
 
 
 suite : Test
@@ -12,27 +12,27 @@ suite =
     describe "decoding"
         [ test "decodeToken works with valid token" <|
             \_ ->
-                decodeToken jwt1Decoder jwt1
+                decodeToken jwt1Decoder validToken
                     |> Expect.equal (Ok expJwt1)
         , test "decodeToken should fail when signature invalid" <|
             \_ ->
-                decodeToken jwt1Decoder "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5cXXX"
+                decodeToken jwt1Decoder invalidToken
                     |> Expect.equal (Ok expJwt1)
 
-        -- , test "tokenDecoder works with valid token" <|
+        -- , test "decodes valid token header" <|
         --     \_ ->
-        --         decodeToken jwt1Decoder jwt1
-        --             |> Expect.equal (Ok expJwt1)
-        -- , test "decodes valid token body" <|
-        --     \_ ->
-        --         getTokenHeader jwt1
+        --         getTokenHeader validToken
         --             |> Decode.decodeString jwt1HeaderDecoder
         --             |> Expect.equal (Ok ( "HS256", "JWT" ))
         ]
 
 
-jwt1 =
+validToken =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+
+invalidToken =
+    "XXXeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 
 
 type alias Jwt1 =
@@ -43,7 +43,7 @@ type alias Jwt1 =
 
 
 jwt1HeaderDecoder =
-    Decode.map2 (,)
+    Decode.map2 (\a b -> ( a, b ))
         (Decode.field "alg" Decode.string)
         (Decode.field "typ" Decode.string)
 
