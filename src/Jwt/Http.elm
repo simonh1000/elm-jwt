@@ -1,10 +1,8 @@
-module Jwt.Http exposing (get, post)
+module Jwt.Http exposing (delete, get, is401, post, put)
 
-import Base64
 import Http exposing (Expect, expectJson, header, jsonBody, request)
 import Json.Decode as Decode exposing (Decoder, Value, field)
 import Jwt exposing (..)
-import String
 import Task exposing (Task)
 import Time exposing (Posix)
 
@@ -20,54 +18,73 @@ import Time exposing (Posix)
 
     getData : String -> Cmd Msg
     getData token =
-        Jwt.get token "/api/data" dataDecoder
-            |> Jwt.send DataResult
+        JHttp.get token
+            { url = serverUrl ++ "/api/data"
+            , expect = Http.expectJson OnDataResponse dataDecoder
+            }
 
 -}
-get :
-    String
-    ->
-        { url : String
-        , expect : Expect msg
-        }
-    -> Cmd msg
+get : String -> { url : String, expect : Expect msg } -> Cmd msg
 get token { url, expect } =
-    let
-        options =
-            { method = "GET"
-            , headers = [ header "Authorization" ("Bearer " ++ token) ]
-            , url = url
-            , body = Http.emptyBody
-            , expect = expect
-            , timeout = Nothing
-            , tracker = Nothing
-            }
-    in
-    request options
+    createRequest "GET"
+        token
+        { url = url
+        , expect = expect
+        , body = Http.emptyBody
+        }
 
 
 {-| post is a replacement for `Http.post` that also takes a token, which is attached to the headers.
 
-\*\* Note that is important to use jsonBody to ensure that the 'application/json' is added to the headers \*\*
+    NOTE that is important to use jsonBody to ensure that the 'application/json' is added to the headers
 
-    postContent : Token -> Decoder a -> E.Value -> String -> Request a
-    postContent token dec value url =
-        Jwt.post token url (Http.jsonBody value) (phoenixDecoder dec)
-            |> Jwt.send ContentResult
+    postContent : Token -> String -> Decoder a -> Encode.Value -> Cmd msg
+    postContent token url dec value =
+        post token
+            { url = url
+            , body = Http.jsonBody value
+            , expect = Http.expectJson ContentResult (phoenixDecoder dec)
+            }
 
 -}
-post :
-    String
-    ->
-        { url : String
-        , body : Http.Body
-        , expect : Http.Expect msg
+post : String -> { url : String, body : Http.Body, expect : Http.Expect msg } -> Cmd msg
+post =
+    createRequest "POST"
+
+
+{-| Create a PUT request with a token attached to the Authorization header
+-}
+put : String -> { url : String, body : Http.Body, expect : Http.Expect msg } -> Cmd msg
+put =
+    createRequest "PUT"
+
+
+{-| returns a `DELETE` Http.Request with the token attached to the headers.
+-}
+delete : String -> { url : String, expect : Expect msg } -> Cmd msg
+delete token { url, expect } =
+    createRequest "DELETE"
+        token
+        { url = url
+        , expect = expect
+        , body = Http.emptyBody
         }
-    -> Cmd msg
-post token { url, body, expect } =
+
+
+{-| createRequest creates the data structure expected by Http.Request.
+It is broken out here so that users can change the expect part in the event that
+one of their REST apis does not return Json.
+
+In my experience, the Authorization header is NOT case sensitive. Do raise an issue if you experience otherwise.
+
+See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/withCredentials) for more on withCredentials. The default is False.
+
+-}
+createRequest : String -> String -> { url : String, body : Http.Body, expect : Http.Expect msg } -> Cmd msg
+createRequest method token { url, body, expect } =
     let
         options =
-            { method = "POST"
+            { method = method
             , headers = [ header "Authorization" ("Bearer " ++ token) ]
             , url = url
             , body = body
@@ -79,111 +96,13 @@ post token { url, body, expect } =
     request options
 
 
-{-| Takes an Http.Error. If it is a 401, check the token for expiry.
+{-| Helper that checks for a 401 in an Http error
 -}
-handleError : String -> Http.Error -> Task Never JwtError
-handleError token err =
-    case promote401 err of
-        Unauthorized ->
-            checkTokenExpiry token
-
-        other ->
-            Task.succeed other
-
-
-{-| Examines a 401 Unauthorized reponse, and converts the error to TokenExpired
-when that is the case.
-
-    getAuth : String -> String -> Decoder a -> Task Never (Result JwtError a)
-    getAuth token url dec =
-        createRequest "GET" token url Http.emptyBody dec
-            |> toTask
-            |> Task.map Result.Ok
-            |> Task.onError (promote401 token)
-
--}
-promote401 : Http.Error -> JwtError
-promote401 err =
+is401 : Http.Error -> Bool
+is401 err =
     case err of
-        Http.BadStatus status ->
-            if status == 401 then
-                Unauthorized
-
-            else
-                HttpError err
+        Http.BadStatus 401 ->
+            True
 
         _ ->
-            HttpError err
-
-
-
--- {-| Create a PUT request with a token attached to the Authorization header
--- -}
--- put : String -> String -> Http.Body -> Decoder a -> Request a
--- put =
---     createRequest "PUT"
---
---
--- {-| returns a `DELETE` Http.Request with the token attached to the headers.
--- -}
--- delete : String -> String -> Decoder a -> Request a
--- delete token url dec =
---     createRequest "DELETE" token url Http.emptyBody dec
---
---
---
--- {-| createRequest creates a Http.Request with the token added to the headers, and
--- sets the `withCredentials` field to True.
--- -}
--- createRequest : String -> String -> String -> Http.Body -> Decoder a -> Http.Request a
--- createRequest method token url body =
---     createRequestObject method token url body >> request
---
---
--- {-| createRequestObject creates the data structure expected by Http.Request.
--- It is broken out here so that users can change the expect part in the event that
--- one of their REST apis does not return Json.
---
--- In my experience, the Authorization header is NOT case sensitive. Do raise an issue if you experience otherwise.
---
--- See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/withCredentials) for more on withCredentials. The default is False.
---
--- -}
--- createRequestObject :
---     String
---     -> String
---     -> String
---     -> Http.Body
---     -> Decoder a
---     -> { method : String, headers : List Http.Header, url : String, body : Http.Body, expect : Http.Expect a, timeout : Maybe Float, withCredentials : Bool }
--- createRequestObject method token url body dec =
---     { method = method
---     , headers = [ header "Authorization" ("Bearer " ++ token) ]
---     , url = url
---     , body = body
---     , expect = expectJson dec
---     , timeout = Nothing
---     , withCredentials = False
---     }
--- {-| `send` replaces `Http.send`. On receipt of a 401 error, it returns a Jwt.Unauthorized.
--- -}
--- send : (Result JwtError a -> msg) -> Request a -> Cmd msg
--- send msgCreator req =
---     let
---         conv : (Result JwtError a -> msg) -> (Result Http.Error a -> msg)
---         conv fn =
---             fn << Result.mapError promote401
---     in
---     Http.send (conv msgCreator) req
---
---
--- {-| `sendCheckExpired` is similar to `send` but, on receiving a 401, it carries out a further check to
--- determine whether the token has expired.
--- -}
--- sendCheckExpired : String -> (Result JwtError a -> msg) -> Request a -> Cmd msg
--- sendCheckExpired token msgCreator req =
---     req
---         |> toTask
---         |> Task.map Result.Ok
---         |> Task.onError (Task.map Err << handleError token)
---         |> Task.perform msgCreator
+            False
