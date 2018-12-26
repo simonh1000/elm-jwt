@@ -18,5 +18,7 @@
         "elm/time": "1.0.0 <= v < 2.0.0",
         "truqu/elm-base64": "2.0.4 <= v < 3.0.0"
     },
-    "test-dependencies": {}
+    "test-dependencies": {
+        "elm-explorations/test": "1.2.0 <= v < 2.0.0"
+    }
 }

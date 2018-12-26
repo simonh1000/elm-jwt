@@ -103,22 +103,36 @@ tokenDecoder dec =
 
 
 getTokenBody : String -> Result JwtError String
-getTokenBody token =
+getTokenBody =
+    getTokenParts >> Result.map Tuple.second
+
+
+getTokenHeader : String -> Result JwtError String
+getTokenHeader =
+    getTokenParts >> Result.map Tuple.first
+
+
+getTokenParts : String -> Result JwtError ( String, String )
+getTokenParts token =
     let
         processor =
             unurl >> String.split "." >> List.map fixlength
     in
     case processor token of
-        _ :: (Result.Err e) :: _ :: [] ->
-            Result.Err e
+        [ Ok header, Ok encBody, _ ] ->
+            Ok ( header, encBody )
 
-        _ :: (Result.Ok encBody) :: _ :: [] ->
-            Result.Ok encBody
+        [ _, Err e, _ ] ->
+            Err e
+
+        [ Err e, _, _ ] ->
+            Err e
 
         _ ->
-            Result.Err <| TokenProcessingError "Token has invalid shape"
+            Err <| TokenProcessingError "Token has invalid shape"
 
 
+{-| -}
 unurl : String -> String
 unurl =
     let
@@ -140,16 +154,16 @@ fixlength : String -> Result JwtError String
 fixlength s =
     case modBy 4 (String.length s) of
         0 ->
-            Result.Ok s
+            Ok s
 
         2 ->
-            Result.Ok <| String.concat [ s, "==" ]
+            Ok <| String.concat [ s, "==" ]
 
         3 ->
-            Result.Ok <| String.concat [ s, "=" ]
+            Ok <| String.concat [ s, "=" ]
 
         _ ->
-            Result.Err <| TokenProcessingError "Wrong length"
+            Err <| TokenProcessingError "Wrong length"
 
 
 {-| Checks a token for Expiry. Returns expiry or any errors that occurred in decoding.
