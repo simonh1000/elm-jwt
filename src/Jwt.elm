@@ -1,6 +1,6 @@
 module Jwt exposing
     ( decodeToken, tokenDecoder, isExpired, checkTokenExpiry
-    , JwtError(..)
+    , JwtError(..), stringFromJwtError
     )
 
 {-| Helper functions for working with Jwt tokens and authenticated CRUD APIs.
@@ -21,7 +21,7 @@ authenticated Http requests.
 
 # Errors
 
-@docs JwtError
+@docs JwtError, stringFromJwtError
 
 -}
 
@@ -49,14 +49,23 @@ type JwtError
     | Unauthorized -- unused
 
 
-errorToString : JwtError -> String
-errorToString jwtError =
-    case jwtError of
+stringFromJwtError : JwtError -> String
+stringFromJwtError jwtErr =
+    case jwtErr of
         Unauthorized ->
             "Unauthorized"
 
-        _ ->
-            "some error"
+        TokenExpired ->
+            "Token expired"
+
+        TokenNotExpired ->
+            "Insufficient priviledges"
+
+        TokenProcessingError err ->
+            "Processing error: " ++ err
+
+        TokenDecodeError err ->
+            "Decoding error: " ++ Decode.errorToString err
 
 
 
@@ -94,7 +103,7 @@ tokenDecoder dec =
                         Decode.succeed val
 
                     Err err ->
-                        Decode.fail <| errorToString err
+                        Decode.fail <| stringFromJwtError err
             )
 
 
@@ -174,20 +183,6 @@ checkTokenExpiry token =
         |> Task.andThen (checkUnacceptedToken token >> Task.succeed)
 
 
-{-| Checks whether a token has expired, and returns True or False, or
-any error that occurred while decoding the token.
--}
-isExpired : Posix -> String -> Result JwtError Bool
-isExpired now token =
-    decodeToken (field "exp" decodeExp) token
-        |> Result.map (\exp -> Time.posixToMillis now > exp * 1000)
-
-
-decodeExp : Decoder Int
-decodeExp =
-    Decode.oneOf [ Decode.int, Decode.map round Decode.float ]
-
-
 checkUnacceptedToken : String -> Posix -> JwtError
 checkUnacceptedToken token now =
     case isExpired now token of
@@ -201,3 +196,17 @@ checkUnacceptedToken token now =
         Err jwtErr ->
             -- Pass through a decoding error
             jwtErr
+
+
+{-| Checks whether a token has expired, and returns True or False, or
+any error that occurred while decoding the token.
+-}
+isExpired : Posix -> String -> Result JwtError Bool
+isExpired now token =
+    decodeToken (field "exp" decodeExp) token
+        |> Result.map (\exp -> Time.posixToMillis now > exp * 1000)
+
+
+decodeExp : Decoder Int
+decodeExp =
+    Decode.oneOf [ Decode.int, Decode.map round Decode.float ]
