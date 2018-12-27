@@ -27,10 +27,13 @@ The library also provides modified versions of Elm standard Http functions to ma
 
 ## Examples
 
-[Examples](https://github.com/simonh1000/elm-jwt/tree/master/examples) are included of the software working with Phoenix and Node backends. More discussion of the Phoenix example can be found in this [blog post](http://simonh1000.github.io/2016/05/phoenix-elm-json-web-tokens/).
+[Examples](https://github.com/simonh1000/elm-jwt/tree/master/examples) are included of the software working with Node.
+
+A blog about using the library with Phoenix can be found [here](http://simonh1000.github.io/2016/05/phoenix-elm-json-web-tokens/).
 
 ## Changelog
 
+* 7.0.0: Http 2.0.0 necessitated major changes. I took the opportunity to simplify my code and the JwtError type in particular
 * 6.0.0: 0.19
 * 5.3.0: Adds decoder got Elixir-Guardian token
 * 5.2.0: Update NodeJS example

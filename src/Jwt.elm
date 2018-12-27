@@ -1,6 +1,7 @@
 module Jwt exposing
-    ( decodeToken, tokenDecoder, isExpired, checkTokenExpiry
-    , JwtError(..), stringFromJwtError
+    ( decodeToken, tokenDecoder, isExpired, checkTokenExpiry, checkToken
+    , JwtError(..), errorToString
+    , getTokenHeader
     )
 
 {-| Helper functions for working with Jwt tokens and authenticated CRUD APIs.
@@ -11,7 +12,7 @@ authenticated Http requests.
 
 # Token reading
 
-@docs decodeToken, tokenDecoder, isExpired, checkTokenExpiry
+@docs decodeToken, tokenDecoder, isExpired, checkTokenExpiry, checkToken
 
 
 # Authenticated Http requests
@@ -21,7 +22,7 @@ authenticated Http requests.
 
 # Errors
 
-@docs JwtError, stringFromJwtError
+@docs JwtError, errorToString
 
 -}
 
@@ -34,38 +35,28 @@ import Time exposing (Posix)
 
 {-| The following errors are modeled
 
-  - 401 (Unauthorized), due either to token expiry or e.g. inadequate permissions
-  - token (non-)expiry information
-  - issues with processing (e.g. base 64 decoding) the token
-  - problems decoding the json data within the content of the token
-  - Any Http.Error, other than a 401
+  - TokenProcessingError - something wrong with the the token (e.g. length, encoding)
+  - TokenDecodeError - the decoder provided could not decode the body of the TokenNotExpired
+  - TokenHeaderError - the header is corrupted in some way
 
 -}
 type JwtError
-    = TokenExpired
-    | TokenNotExpired
-    | TokenProcessingError String
+    = TokenProcessingError String
     | TokenDecodeError Decode.Error
-    | Unauthorized -- unused
+    | TokenHeaderError
 
 
-stringFromJwtError : JwtError -> String
-stringFromJwtError jwtErr =
+errorToString : JwtError -> String
+errorToString jwtErr =
     case jwtErr of
-        Unauthorized ->
-            "Unauthorized"
-
-        TokenExpired ->
-            "Token expired"
-
-        TokenNotExpired ->
-            "Insufficient priviledges"
-
         TokenProcessingError err ->
             "Processing error: " ++ err
 
         TokenDecodeError err ->
             "Decoding error: " ++ Decode.errorToString err
+
+        TokenHeaderError ->
+            "Header is corrupted"
 
 
 
@@ -103,22 +94,35 @@ tokenDecoder dec =
                         Decode.succeed val
 
                     Err err ->
-                        Decode.fail <| stringFromJwtError err
+                        Decode.fail <| errorToString err
             )
 
 
+{-| Returns a stringified json of the token's header
+-}
+getTokenHeader : String -> Result JwtError String
+getTokenHeader token =
+    token
+        |> getTokenParts
+        |> Result.map Tuple.first
+        |> Result.andThen (Base64.decode >> Result.mapError TokenProcessingError)
 
+
+checkTokenHeader : String -> Result JwtError Value
+checkTokenHeader token =
+    getTokenHeader token
+        |> Result.andThen (Decode.decodeString Decode.value >> Result.mapError (\_ -> TokenHeaderError))
+
+
+
+-- ------------------------
 -- Private helper functions
+-- ------------------------
 
 
 getTokenBody : String -> Result JwtError String
 getTokenBody =
     getTokenParts >> Result.map Tuple.second
-
-
-getTokenHeader : String -> Result JwtError String
-getTokenHeader =
-    getTokenParts >> Result.map Tuple.first
 
 
 getTokenParts : String -> Result JwtError ( String, String )
@@ -175,27 +179,36 @@ fixlength s =
             Err <| TokenProcessingError "Wrong length"
 
 
-{-| Checks a token for Expiry. Returns expiry or any errors that occurred in decoding.
+{-| Checks a token for Expiry. Returns expiry or any error that occurred in decoding.
 -}
-checkTokenExpiry : String -> Task Never JwtError
+checkTokenExpiry : String -> Task JwtError Bool
 checkTokenExpiry token =
     Time.now
-        |> Task.andThen (checkUnacceptedToken token >> Task.succeed)
+        |> Task.andThen
+            (\now ->
+                case isExpired now token of
+                    Ok bool ->
+                        Task.succeed bool
+
+                    Err err ->
+                        Task.fail err
+            )
 
 
-checkUnacceptedToken : String -> Posix -> JwtError
-checkUnacceptedToken token now =
-    case isExpired now token of
-        Ok True ->
-            TokenExpired
+{-| Does a complete check of your token
+-}
+checkToken : String -> Task JwtError Bool
+checkToken token =
+    Time.now
+        |> Task.andThen
+            (\now ->
+                case Result.map2 (\a b -> ( a, b )) (isExpired now token) (checkTokenHeader token) of
+                    Ok ( bool, _ ) ->
+                        Task.succeed bool
 
-        Ok False ->
-            -- Although the token is not expired, server rejected request for some other reason
-            TokenNotExpired
-
-        Err jwtErr ->
-            -- Pass through a decoding error
-            jwtErr
+                    Err err ->
+                        Task.fail err
+            )
 
 
 {-| Checks whether a token has expired, and returns True or False, or

@@ -9,7 +9,7 @@ import Http
 import Json.Decode as Decode
 import Json.Encode as E exposing (Value)
 import Jwt exposing (..)
-import Jwt.Http as JHttp
+import Jwt.Http
 import Task exposing (Task)
 
 
@@ -43,17 +43,16 @@ type Msg
     = FormInput Field String -- updating form input
     | Login -- onClick Login
       -- after receiving token
-    | TryToken -- onClick button
-    | TryInvalidToken -- onClick button
+    | TryToken String -- token , onClick button
       -- Cmd results
     | OnLoginResponse (Result Http.Error String)
-    | OnDataResponse (Result Http.Error String)
-    | OnTokenExpireyCheck JwtError
+    | OnDataResponse String (Result Http.Error String)
+    | OnTokenExpiryCheck (Result JwtError Bool)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
-    case message of
+    case Debug.log "" message of
         FormInput inputId val ->
             case inputId of
                 Uname ->
@@ -65,15 +64,10 @@ update message model =
         Login ->
             ( model, submitCredentials model )
 
-        TryToken ->
+        TryToken token ->
             ( { model | msg = "Contacting server..." }
-            , model.token
-                |> Maybe.map tryToken
-                |> Maybe.withDefault Cmd.none
+            , tryToken token
             )
-
-        TryInvalidToken ->
-            ( { model | msg = "Contacting server..." }, tryToken "invalid token" )
 
         OnLoginResponse res ->
             case res of
@@ -83,24 +77,36 @@ update message model =
                 Err err ->
                     ( { model | msg = handleHttpError err }, Cmd.none )
 
-        OnDataResponse res ->
+        OnDataResponse token res ->
             case res of
                 Ok msg ->
                     ( { model | msg = msg }, Cmd.none )
 
                 Err httpErr ->
-                    if JHttp.is401 httpErr then
+                    if Jwt.Http.is401 httpErr then
                         ( { model | msg = "Unauthorized, checking whether expired" }
-                        , model.token
-                            |> Maybe.map (Jwt.checkTokenExpiry >> Task.perform OnTokenExpireyCheck)
-                            |> Maybe.withDefault Cmd.none
+                        , token
+                            |> Jwt.checkToken
+                            |> Task.attempt OnTokenExpiryCheck
                         )
 
                     else
                         ( { model | msg = handleHttpError httpErr }, Cmd.none )
 
-        OnTokenExpireyCheck jwtErr ->
-            ( { model | msg = stringFromJwtError jwtErr }, Cmd.none )
+        OnTokenExpiryCheck res ->
+            let
+                msg =
+                    case res of
+                        Ok True ->
+                            "Expired"
+
+                        Ok False ->
+                            "Not expired!"
+
+                        Err jwtErr ->
+                            Jwt.errorToString jwtErr
+            in
+            ( { model | msg = msg }, Cmd.none )
 
 
 handleHttpError : Http.Error -> String
@@ -172,18 +178,30 @@ view model =
 
             Just tokenString ->
                 let
+                    decodeHeader =
+                        Decode.map2 (\a b -> ( a, b ))
+                            (Decode.field "typ" Decode.string)
+                            (Decode.field "alg" Decode.string)
+
+                    header =
+                        tokenString
+                            |> Jwt.getTokenHeader
+                            |> Result.mapError Jwt.errorToString
+                            |> Result.andThen (Decode.decodeString decodeHeader >> Result.mapError Decode.errorToString)
+
                     token =
                         case decodeToken Decoders.tokenDecoder tokenString of
                             Ok t ->
                                 Debug.toString t
 
                             Err err ->
-                                Jwt.stringFromJwtError err
+                                Jwt.errorToString err
                 in
                 div []
                     [ p [] [ text token ]
-                    , mkButton TryToken "Try token"
-                    , mkButton TryInvalidToken "Try invalid token"
+                    , p [] [ text <| Debug.toString header ]
+                    , mkButton (TryToken tokenString) "Try token"
+                    , mkButton (TryToken <| "xx" ++ tokenString) "Try invalid token"
 
                     -- , mkButton TryErrorRoute "Try route with insufficient priviledges"
                     , p [] [ text "Wait 30 seconds and try again too" ]
@@ -229,9 +247,9 @@ submitCredentials model =
 
 tryToken : String -> Cmd Msg
 tryToken token =
-    JHttp.get token
+    Jwt.Http.get token
         { url = serverUrl ++ "/api/data"
-        , expect = Http.expectJson OnDataResponse dataDecoder
+        , expect = Http.expectJson (OnDataResponse token) dataDecoder
         }
 
 
