@@ -1,5 +1,5 @@
 module Jwt exposing
-    ( decodeToken, tokenDecoder, isExpired, checkTokenExpiry, getTokenHeader
+    ( decodeToken, tokenDecoder, checkTokenExpiry, isExpired, getTokenHeader
     , JwtError(..), errorToString
     )
 
@@ -8,7 +8,7 @@ module Jwt exposing
 
 # Token reading
 
-@docs decodeToken, tokenDecoder, isExpired, checkTokenExpiry, getTokenHeader
+@docs decodeToken, tokenDecoder, checkTokenExpiry, isExpired, getTokenHeader
 
 
 # Errors
@@ -187,14 +187,14 @@ fixlength s =
 
 {-| The following errors are modeled
 
-  - TokenProcessingError - something wrong with the the raw token (e.g. length, encoding)
-  - TokenDecodeError - the token is not vaild JSON or the decoder provided could not decode the body
-  - TokenHeaderError - the header is corrupted in some way
+  - `TokenProcessingError` - something wrong with the the raw token (e.g. length, base64 encoding)
+  - `TokenDecodeError` - the token is not valid JSON or the decoder provided could not decode the body
+  - `TokenHeaderError` - the header is corrupted in some way
 
 -}
 type JwtError
     = TokenProcessingError String
-    | TokenDecodeError Decode.Error -- not valid json
+    | TokenDecodeError Decode.Error
     | TokenHeaderError
 
 

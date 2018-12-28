@@ -20,7 +20,7 @@ import Time exposing (Posix)
 
     getData : String -> Cmd Msg
     getData token =
-        JHttp.get token
+        Jwt.Http.get token
             { url = serverUrl ++ "/api/data"
             , expect = Http.expectJson OnDataResponse dataDecoder
             }
@@ -36,13 +36,11 @@ get token { url, expect } =
         }
 
 
-{-| post is a replacement for `Http.post` that also takes a token, which is attached to the headers.
-
-    NOTE that is important to use jsonBody to ensure that the 'application/json' is added to the headers
+{-| post is a replacement for `Http.post` that also takes a token, which is attached to the headers. NOTE that is important to use jsonBody to ensure that the 'application/json' is added to the headers
 
     postContent : Token -> String -> Decoder a -> Encode.Value -> Cmd msg
     postContent token url dec value =
-        post token
+        Jwt.Http.post token
             { url = url
             , body = Http.jsonBody value
             , expect = Http.expectJson ContentResult (phoenixDecoder dec)
@@ -54,14 +52,14 @@ post =
     createRequest "POST"
 
 
-{-| Create a PUT request with a token attached to the Authorization header
+{-| Create a `PUT` command with a token attached to the headers.
 -}
 put : String -> { url : String, body : Http.Body, expect : Http.Expect msg } -> Cmd msg
 put =
     createRequest "PUT"
 
 
-{-| returns a `DELETE` Http.Request with the token attached to the headers.
+{-| Create a `DELETE` command with a token attached to the headers.
 -}
 delete : String -> { url : String, expect : Expect msg } -> Cmd msg
 delete token { url, expect } =
@@ -73,7 +71,7 @@ delete token { url, expect } =
         }
 
 
-{-| Helper that checks for a 401 in an Http error
+{-| Helper that checks an Http.Error for a 401
 -}
 is401 : Http.Error -> Bool
 is401 err =
