@@ -85,8 +85,7 @@ update message model =
                 Err httpErr ->
                     if Jwt.Http.is401 httpErr then
                         ( { model | msg = "Unauthorized, checking whether expired" }
-                        , token
-                            |> Jwt.checkToken
+                        , Jwt.checkTokenExpiry token
                             |> Task.attempt OnTokenExpiryCheck
                         )
 
