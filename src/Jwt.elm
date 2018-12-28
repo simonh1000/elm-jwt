@@ -198,6 +198,8 @@ type JwtError
     | TokenHeaderError
 
 
+{-| Provides a default conversion of a JwtError to a string
+-}
 errorToString : JwtError -> String
 errorToString jwtErr =
     case jwtErr of

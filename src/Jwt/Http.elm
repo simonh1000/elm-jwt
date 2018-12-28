@@ -1,9 +1,12 @@
-module Jwt.Http exposing (delete, get, is401, post, put)
+module Jwt.Http exposing (get, post, put, delete, is401)
 
-{-
-   # Authenticated Http requests
+{-|
 
-   @docs get, post, put, delete, is401
+
+# Authenticated Http requests
+
+@docs get, post, put, delete, is401
+
 -}
 
 import Http exposing (Expect, expectJson, header, jsonBody, request)
@@ -11,13 +14,6 @@ import Json.Decode as Decode exposing (Decoder, Value, field)
 import Jwt exposing (..)
 import Task exposing (Task)
 import Time exposing (Posix)
-
-
-
-{- ====================================================
-    MAKING AUTHENTICATED API CALLS
-   ====================================================
--}
 
 
 {-| `get` is a replacement for `Http.get` that also takes a token, which is attached to the headers.
@@ -77,11 +73,23 @@ delete token { url, expect } =
         }
 
 
-{-| createRequest creates the data structure expected by Http.Request.
-It is broken out here so that users can change the expect part in the event that
-one of their REST apis does not return Json.
+{-| Helper that checks for a 401 in an Http error
+-}
+is401 : Http.Error -> Bool
+is401 err =
+    case err of
+        Http.BadStatus 401 ->
+            True
 
-In my experience, the Authorization header is NOT case sensitive. Do raise an issue if you experience otherwise.
+        _ ->
+            False
+
+
+
+-- Helpers
+
+
+{-| In my experience, the Authorization header is NOT case sensitive. Do raise an issue if you experience otherwise.
 
 See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/withCredentials) for more on withCredentials. The default is False.
 
@@ -100,15 +108,3 @@ createRequest method token { url, body, expect } =
             }
     in
     request options
-
-
-{-| Helper that checks for a 401 in an Http error
--}
-is401 : Http.Error -> Bool
-is401 err =
-    case err of
-        Http.BadStatus 401 ->
-            True
-
-        _ ->
-            False
