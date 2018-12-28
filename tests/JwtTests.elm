@@ -1,4 +1,4 @@
-module JwtTests exposing (Jwt1, expJwt1, invalidToken, jwt1Decoder, jwt1HeaderDecoder, suite, validToken)
+module JwtTests exposing (Jwt1, expJwt1, invalidHeader, jwt1Decoder, jwt1HeaderDecoder, suite, validToken)
 
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, list, string)
@@ -14,16 +14,24 @@ suite =
             \_ ->
                 decodeToken jwt1Decoder validToken
                     |> Expect.equal (Ok expJwt1)
-        , test "decodeToken should fail when signature invalid" <|
+        , test "decodeToken should fail when body invalid" <|
             \_ ->
-                decodeToken jwt1Decoder invalidToken
-                    |> Expect.equal (Ok expJwt1)
-
-        -- , test "decodes valid token header" <|
-        --     \_ ->
-        --         getTokenHeader validToken
-        --             |> Decode.decodeString jwt1HeaderDecoder
-        --             |> Expect.equal (Ok ( "HS256", "JWT" ))
+                decodeToken jwt1Decoder invalidBody
+                    |> Expect.equal (Err (TokenProcessingError "Invalid UTF-16"))
+        , test "decodeToken should fail when header invalid" <|
+            \_ ->
+                decodeToken jwt1Decoder invalidHeader
+                    |> Expect.equal (Err TokenHeaderError)
+        , test "decodes valid token header" <|
+            \_ ->
+                getTokenHeader validToken
+                    |> Result.andThen (Decode.decodeString jwt1HeaderDecoder >> Result.mapError TokenDecodeError)
+                    |> Expect.equal (Ok ( "HS256", "JWT" ))
+        , test "identifies an invalid token header" <|
+            \_ ->
+                getTokenHeader invalidHeader
+                    |> Result.andThen (Decode.decodeString jwt1HeaderDecoder >> Result.mapError TokenDecodeError)
+                    |> Expect.equal (Err TokenHeaderError)
         ]
 
 
@@ -31,8 +39,12 @@ validToken =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 
 
-invalidToken =
-    "XXXeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+invalidBody =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xxeyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+
+invalidHeader =
+    "xxeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 
 
 type alias Jwt1 =

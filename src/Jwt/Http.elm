@@ -1,5 +1,11 @@
 module Jwt.Http exposing (delete, get, is401, post, put)
 
+{-
+   # Authenticated Http requests
+
+   @docs get, post, put, delete, is401
+-}
+
 import Http exposing (Expect, expectJson, header, jsonBody, request)
 import Json.Decode as Decode exposing (Decoder, Value, field)
 import Jwt exposing (..)
