@@ -3,20 +3,12 @@ module Jwt exposing
     , JwtError(..), errorToString
     )
 
-{-| Helper functions for working with Jwt tokens and authenticated CRUD APIs.
-
-This package provides functions for reading tokens, and for using them to make
-authenticated Http requests.
+{-| Helper functions for working with Jwt tokens
 
 
 # Token reading
 
-@docs decodeToken, tokenDecoder, isExpired, checkTokenExpiry, checkToken
-
-
-# Authenticated Http requests
-
-@docs createRequest, createRequestObject, send, sendCheckExpired, get, post, put, delete
+@docs decodeToken, tokenDecoder, isExpired, checkTokenExpiry, getTokenHeader
 
 
 # Errors
