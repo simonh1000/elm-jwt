@@ -8,5 +8,6 @@ gitignore
 .DS_Store
 ignore
 examples/google
+examples/phoenix
 release
 package-lock.json
