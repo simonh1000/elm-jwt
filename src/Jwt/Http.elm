@@ -16,7 +16,7 @@ import Task exposing (Task)
 import Time exposing (Posix)
 
 
-{-| `get` is a replacement for `Http.get` that also takes a token, which is attached to the headers.
+{-| A replacement for `Http.get` that also takes a token, which is attached to the headers.
 
     getData : String -> Cmd Msg
     getData token =
@@ -36,10 +36,11 @@ get token { url, expect } =
         }
 
 
-{-| post is a replacement for `Http.post` that also takes a token, which is attached to the headers. NOTE that is important to use jsonBody to ensure that the 'application/json' is added to the headers
+{-| A replacement for `Http.post` that also takes a token, which is attached to the headers.
+NOTE that is important to use `jsonBody` to ensure that the 'application/json' is added to the headers
 
-    postContent : Token -> String -> Decoder a -> Encode.Value -> Cmd msg
-    postContent token url dec value =
+    sendToServer : String -> String -> Json.Decode.Decoder a -> Json.Encode.Value -> Cmd msg
+    sendToServer token url dec value =
         Jwt.Http.post token
             { url = url
             , body = Http.jsonBody value

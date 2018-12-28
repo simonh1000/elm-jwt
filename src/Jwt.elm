@@ -28,11 +28,9 @@ import Time exposing (Posix)
 -- TOKEN PROCESSING
 
 
-{-| decodeToken parses the token, checking that it meets the Jwt standards.
+{-| Parses the token, checking that it meets the Jwt standards. In the event of success, `decodeToken` returns result of the JSON Decoder.
 
     decodeToken dec token
-
-In the event of success, `decodeToken` returns an Elm record structure using the JSON Decoder.
 
 -}
 decodeToken : Decoder a -> String -> Result JwtError a
@@ -45,9 +43,8 @@ decodeToken dec token =
 
 {-| All the token parsing goodness in the form of a Json Decoder
 
-    -- decode token from Firebase
-    let firebaseToken =
-            decodeString (tokenDecoder Jwt.Decoders.firebase) tokenString
+    firebaseToken =
+        Json.Decode.decodeString (tokenDecoder Jwt.Decoders.firebase) tokenString
 
 -}
 tokenDecoder : Decoder a -> Decoder a
