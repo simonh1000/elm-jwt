@@ -1,5 +1,5 @@
 module Jwt exposing
-    ( decodeToken, tokenDecoder, checkTokenExpiry, isExpired, getTokenHeader
+    ( decodeToken, tokenDecoder, checkTokenExpiry, getTokenExpirationMillis, isExpired, getTokenHeader
     , JwtError(..), errorToString
     )
 
@@ -8,7 +8,7 @@ module Jwt exposing
 
 # Token reading
 
-@docs decodeToken, tokenDecoder, checkTokenExpiry, isExpired, getTokenHeader
+@docs decodeToken, tokenDecoder, checkTokenExpiry, getTokenExpirationMillis, isExpired, getTokenHeader
 
 
 # Errors
@@ -82,12 +82,22 @@ any error that occurred while processing the token.
 -}
 isExpired : Posix -> String -> Result JwtError Bool
 isExpired now token =
+    getTokenExpirationMillis token
+        |> Result.map (\millis -> Time.posixToMillis now > millis)
+
+
+{-| Extracts the token expiration timestamp from the JWT "exp" field.
+Returns the timestamp in milliseconds since epoch, or any error that
+occurred while processing the token.
+-}
+getTokenExpirationMillis : String -> Result JwtError Int
+getTokenExpirationMillis token =
     let
         decodeExp =
             Decode.oneOf [ Decode.int, Decode.map round Decode.float ]
     in
     decodeToken (field "exp" decodeExp) token
-        |> Result.map (\exp -> Time.posixToMillis now > exp * 1000)
+        |> Result.map (\exp -> 1000 * exp)
 
 
 {-| Returns stringified json of the token's header
