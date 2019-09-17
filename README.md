@@ -27,12 +27,13 @@ The library also provides modified versions of thet standard Http functions to m
 
 ## Examples
 
-An [example](https://github.com/simonh1000/elm-jwt/tree/master/examples) of the software working with a Node backend is provided.
+An [example](https://github.com/simonh1000/elm-jwt/tree/master/examples) with a Node backend is provided.
 
-A blog about using the library with Phoenix can be found [here](http://simonh1000.github.io/2016/05/phoenix-elm-json-web-tokens/).
+I previous blogged about using [elm-jwt with Phoenix](http://simonh1000.github.io/2016/05/phoenix-elm-json-web-tokens/).
 
 ## Changelog
 
+* 7.1.0: (0.19) Expose getTokenExpirationMillis (thanks robx)
 * 7.0.0: (0.19) Http 2.0.0 necessitated major changes. I took the opportunity to simplify my code and the JwtError type in particular. All token processing functions now also do a cursory check that the header is valid json
 * 6.0.0: (0.19) Update
 * 5.3.0: Adds decoder got Elixir-Guardian token
