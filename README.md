@@ -33,6 +33,7 @@ I previous blogged about using [elm-jwt with Phoenix](http://simonh1000.github.i
 
 ## Changelog
 
+* 7.1.1: (0.19.1) Use faster Base64 library (thanks Petre)
 * 7.1.0: (0.19) Expose getTokenExpirationMillis (thanks robx)
 * 7.0.0: (0.19) Http 2.0.0 necessitated major changes. I took the opportunity to simplify my code and the JwtError type in particular. All token processing functions now also do a cursory check that the header is valid json
 * 6.0.0: (0.19) Update
