@@ -12,10 +12,10 @@ body {
 header {
     display: flex;
     align-items: center;
-    img {
-        width: 60px;
-        margin-right: 30px;
-    }
+}
+header img {
+    width: 60px;
+    margin-right: 30px;
 }
 
 button {
@@ -23,7 +23,7 @@ button {
 }
 
 .logo {
-    background: url('images/logo.png');
+    background: url(images/logo.png);
     width: 60px;
     height: 60px;
     background-size: cover;

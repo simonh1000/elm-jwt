@@ -27,7 +27,7 @@ The library also provides modified versions of thet standard Http functions to m
 
 ## Examples
 
-An [example](https://github.com/simonh1000/elm-jwt/tree/master/examples) with a Node backend is provided.
+An [example](https://github.com/simonh1000/elm-jwt/tree/master/examples/node) with a Node backend is provided.
 
 I previous blogged about using [elm-jwt with Phoenix](http://simonh1000.github.io/2016/05/phoenix-elm-json-web-tokens/).
 

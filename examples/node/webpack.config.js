@@ -45,12 +45,6 @@ var common = {
                 }
             },
             {
-                test: /\.scss$/,
-                exclude: [/elm-stuff/, /node_modules/],
-                // see https://github.com/webpack-contrib/css-loader#url
-                loaders: ["style-loader", "css-loader?url=false", "sass-loader"]
-            },
-            {
                 test: /\.css$/,
                 exclude: [/elm-stuff/, /node_modules/],
                 loaders: ["style-loader", "css-loader?url=false"]
@@ -166,15 +160,6 @@ if (MODE === "production") {
                         "css-loader?url=false"
                     ]
                 },
-                {
-                    test: /\.scss$/,
-                    exclude: [/elm-stuff/, /node_modules/],
-                    loaders: [
-                        MiniCssExtractPlugin.loader,
-                        "css-loader?url=false",
-                        "sass-loader"
-                    ]
-                }
             ]
         }
     });
