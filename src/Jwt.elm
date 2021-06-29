@@ -131,13 +131,13 @@ getTokenParts token =
         [ Ok header, Ok body, _ ] ->
             let
                 header_ =
-                    Base64.decode header
-                        |> Result.mapError (\_ -> TokenHeaderError)
+                    Base64.toString header
+                        |> Result.fromMaybe TokenHeaderError
                         |> Result.andThen (verifyJson (\_ -> TokenHeaderError))
 
                 body_ =
-                    Base64.decode body
-                        |> Result.mapError TokenProcessingError
+                    Base64.toString body
+                        |> Result.fromMaybe (TokenProcessingError "Invalid UTF-16")
                         |> Result.andThen (verifyJson TokenDecodeError)
             in
             Result.map2 (\a b -> ( a, b )) header_ body_
